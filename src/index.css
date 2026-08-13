@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@import "@fontsource/oswald/latin-500.css";
+@import "@fontsource/oswald/latin-600.css";
+@import "@fontsource/oswald/latin-700.css";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+@theme {
+  --color-ink: #14181d;
+  --color-ink-raised: #1c222a;
+  --color-ink-line: #2a323c;
+  --color-chalk: #f3f1ea;
+  --color-chalk-dim: #b7bcc4;
+  --color-gold: #e8b23d;
+  --color-gold-dim: #a87f2c;
+  --color-court-line: #3e6e8e;
+  --color-back-row: #6d7686;
+  --color-serve: #c1473a;
+
+  --font-display: 'Oswald', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-chalk);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  /* Landscape-locked app: on a notched phone held sideways, the notch sits
+     on the left or right, not the top - pad the whole page for it. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Baseline safety net: any input/select smaller than 16px makes iOS Safari
+   auto-zoom the whole page on focus, which is jarring mid-game. Utility
+   classes on individual elements can still override this where genuinely
+   safe (e.g. a checkbox), but this catches anything missed. */
+@layer base {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+/* Buttons and form controls: remove the ~300ms tap delay and stop
+   double-tap-to-zoom from firing on repeated quick taps during a game. */
+button, a, label, input, select {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Printable cheat sheet: only this section prints, everything else hides */
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #cheat-sheet, #cheat-sheet * {
+    visibility: visible;
+  }
+  #cheat-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    background: white;
+    color: black;
+  }
+}

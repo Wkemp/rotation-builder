@@ -1,0 +1,300 @@
+import { useState } from 'react';
+import { Printer, Rows3, Grid2x2, Tag } from 'lucide-react';
+import CourtDiagram from './components/CourtDiagram';
+import RotationSelector from './components/RotationSelector';
+import RosterPanel from './components/RosterPanel';
+import CheatSheet from './components/CheatSheet';
+import EntitySwitcher from './components/EntitySwitcher';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { createInitialAppData, createEmptyRoster, createEmptyRotationSet, nextDefaultName } from './lib/appData';
+import { makeId } from './lib/id';
+import { exportTeamFile, exportBackupFile, parseImportPayload, remapTeamIds } from './lib/fileTransfer';
+
+export default function App() {
+  const [appData, setAppData] = useLocalStorage('rb.data', createInitialAppData);
+  const [layout, setLayout] = useLocalStorage('rb.layout', 'stacked'); // 'stacked' | 'side'
+  const [showZoneLabels, setShowZoneLabels] = useLocalStorage('rb.zoneLabels', true);
+  const [startRotation, setStartRotation] = useLocalStorage('rb.startRotation', 1);
+  const [current, setCurrent] = useState(1);
+  const [view, setView] = useState('court'); // 'court' | 'cheatsheet'
+
+  const isSide = layout === 'side';
+
+  const activeRoster = appData.rosters[appData.activeRosterId];
+  const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
+
+  // --- Roster (team) level ---
+
+  function switchRoster(id) {
+    setAppData((prev) => ({ ...prev, activeRosterId: id }));
+  }
+
+  function createRoster() {
+    const roster = createEmptyRoster(nextDefaultName(appData.rosters, 'New Team'));
+    setAppData((prev) => ({
+      rosters: { ...prev.rosters, [roster.id]: roster },
+      activeRosterId: roster.id,
+    }));
+    setCurrent(1);
+  }
+
+  function renameRoster(id, name) {
+    setAppData((prev) => ({
+      ...prev,
+      rosters: { ...prev.rosters, [id]: { ...prev.rosters[id], name } },
+    }));
+  }
+
+  function deleteRoster(id) {
+    setAppData((prev) => {
+      const ids = Object.keys(prev.rosters);
+      if (ids.length <= 1) return prev;
+      const nextRosters = { ...prev.rosters };
+      delete nextRosters[id];
+      const nextActive = prev.activeRosterId === id ? ids.find((r) => r !== id) : prev.activeRosterId;
+      return { rosters: nextRosters, activeRosterId: nextActive };
+    });
+  }
+
+  // Generic patch helper for "change something on the active roster"
+  function updateActiveRoster(patch) {
+    setAppData((prev) => ({
+      ...prev,
+      rosters: {
+        ...prev.rosters,
+        [prev.activeRosterId]: { ...prev.rosters[prev.activeRosterId], ...patch },
+      },
+    }));
+  }
+
+  const setPlayers = (players) => updateActiveRoster({ players });
+
+  // --- Rotation set level (nested under the active roster) ---
+
+  function switchRotationSet(id) {
+    updateActiveRoster({ activeRotationSetId: id });
+    setCurrent(1);
+  }
+
+  function createRotationSet() {
+    const set = createEmptyRotationSet(nextDefaultName(activeRoster.rotationSets, 'New Lineup'));
+    updateActiveRoster({
+      rotationSets: { ...activeRoster.rotationSets, [set.id]: set },
+      activeRotationSetId: set.id,
+    });
+    setCurrent(1);
+  }
+
+  function duplicateRotationSet(id) {
+    const source = activeRoster.rotationSets[id];
+    const copy = {
+      ...source,
+      id: makeId('set_'),
+      name: nextDefaultName(activeRoster.rotationSets, `${source.name} copy`),
+    };
+    updateActiveRoster({
+      rotationSets: { ...activeRoster.rotationSets, [copy.id]: copy },
+      activeRotationSetId: copy.id,
+    });
+    setCurrent(1);
+  }
+
+  function renameRotationSet(id, name) {
+    updateActiveRoster({
+      rotationSets: {
+        ...activeRoster.rotationSets,
+        [id]: { ...activeRoster.rotationSets[id], name },
+      },
+    });
+  }
+
+  function deleteRotationSet(id) {
+    const ids = Object.keys(activeRoster.rotationSets);
+    if (ids.length <= 1) return;
+    const nextSets = { ...activeRoster.rotationSets };
+    delete nextSets[id];
+    const nextActiveSetId =
+      activeRoster.activeRotationSetId === id ? ids.find((s) => s !== id) : activeRoster.activeRotationSetId;
+    updateActiveRoster({ rotationSets: nextSets, activeRotationSetId: nextActiveSetId });
+  }
+
+  function updateActiveRotationSet(patch) {
+    updateActiveRoster({
+      rotationSets: {
+        ...activeRoster.rotationSets,
+        [activeRoster.activeRotationSetId]: { ...activeSet, ...patch },
+      },
+    });
+  }
+
+  const setSlots = (slots) => updateActiveRotationSet({ slots });
+  const setLiberos = (liberos) => updateActiveRotationSet({ liberos });
+
+  // --- File export/import ---
+
+  function handleExportTeam() {
+    exportTeamFile(activeRoster);
+  }
+
+  function handleExportBackup() {
+    exportBackupFile(appData.rosters);
+  }
+
+  async function handleImportFile(file) {
+    try {
+      const text = await file.text();
+      const payload = parseImportPayload(text); // throws a friendly Error if invalid
+
+      const nextRosters = { ...appData.rosters };
+      const importedNames = [];
+      let firstNewId = null;
+      for (const rawTeam of payload.teams) {
+        const remapped = remapTeamIds(rawTeam);
+        remapped.name = nextDefaultName(nextRosters, remapped.name);
+        nextRosters[remapped.id] = remapped;
+        importedNames.push(remapped.name);
+        if (!firstNewId) firstNewId = remapped.id;
+      }
+
+      setAppData({ rosters: nextRosters, activeRosterId: firstNewId });
+      setCurrent(1);
+
+      const label = importedNames.length === 1 ? `"${importedNames[0]}"` : `${importedNames.length} teams`;
+      return { success: true, message: `Imported ${label}.` };
+    } catch (err) {
+      return { success: false, message: err.message || 'Import failed.' };
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-ink text-chalk font-body pb-10">
+      <header className="border-b border-ink-line px-4 py-3 flex items-center gap-3 print:hidden">
+        <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <EntitySwitcher
+            items={appData.rosters}
+            activeId={appData.activeRosterId}
+            onSwitch={switchRoster}
+            onCreate={createRoster}
+            onRename={renameRoster}
+            onDelete={deleteRoster}
+            label="Team"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {view === 'court' && (
+            <button
+              onClick={() => setLayout(isSide ? 'stacked' : 'side')}
+              className="flex items-center gap-1.5 h-11 px-3 rounded-lg text-sm font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors"
+            >
+              {isSide ? <Rows3 size={16} /> : <Grid2x2 size={16} />}
+              <span className="hidden sm:inline">{isSide ? 'Stacked' : 'Side-by-side'}</span>
+            </button>
+          )}
+          <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1">
+            <button
+              onClick={() => setView('court')}
+              className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+                view === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
+              }`}
+            >
+              Court
+            </button>
+            <button
+              onClick={() => setView('cheatsheet')}
+              className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+                view === 'cheatsheet' ? 'bg-gold text-ink' : 'text-chalk-dim'
+              }`}
+            >
+              Cheat Sheet
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {view === 'court' ? (
+        <main className={`p-4 gap-6 ${isSide ? 'lg:flex lg:items-start' : ''}`}>
+          <section className={isSide ? 'lg:w-1/3 lg:flex-shrink-0 space-y-5' : 'space-y-5 mb-6'}>
+            <RosterPanel
+              roster={activeRoster.players}
+              setRoster={setPlayers}
+              slots={activeSet.slots}
+              setSlots={setSlots}
+              liberos={activeSet.liberos}
+              setLiberos={setLiberos}
+              rotationSets={activeRoster.rotationSets}
+              activeRotationSetId={activeRoster.activeRotationSetId}
+              onSwitchRotationSet={switchRotationSet}
+              onCreateRotationSet={createRotationSet}
+              onDuplicateRotationSet={duplicateRotationSet}
+              onRenameRotationSet={renameRotationSet}
+              onDeleteRotationSet={deleteRotationSet}
+              onExportTeam={handleExportTeam}
+              onExportBackup={handleExportBackup}
+              onImportFile={handleImportFile}
+            />
+          </section>
+
+          <section className={isSide ? 'lg:w-2/3' : ''}>
+            <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
+                <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
+                  Court
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowZoneLabels(!showZoneLabels)}
+                    aria-pressed={showZoneLabels}
+                    className={`flex items-center gap-1.5 h-11 px-3 rounded-full text-sm font-medium border transition-colors ${
+                      showZoneLabels
+                        ? 'bg-gold text-ink border-gold'
+                        : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                    }`}
+                  >
+                    <Tag size={16} />
+                    Zones
+                  </button>
+                </div>
+              </div>
+              <div className="p-4">
+                <CourtDiagram
+                  rotationNum={current}
+                  slots={activeSet.slots}
+                  liberos={activeSet.liberos}
+                  roster={activeRoster.players}
+                  showZoneLabels={showZoneLabels}
+                />
+              </div>
+            </div>
+
+            <RotationSelector
+              current={current}
+              startRotation={startRotation}
+              onSelect={setCurrent}
+              onSetStart={setStartRotation}
+            />
+          </section>
+        </main>
+      ) : (
+        <main className="p-4">
+          <button
+            onClick={() => window.print()}
+            className="mb-4 flex items-center gap-1.5 h-11 bg-gold text-ink rounded-lg px-4 text-sm font-medium hover:bg-gold-dim transition-colors print:hidden"
+          >
+            <Printer size={16} /> Print cheat sheet
+          </button>
+          <CheatSheet
+            teamName={`${activeRoster.name} — ${activeSet.name}`}
+            slots={activeSet.slots}
+            liberos={activeSet.liberos}
+            roster={activeRoster.players}
+          />
+        </main>
+      )}
+
+      <p className="text-center text-[11px] text-chalk-dim/60 px-4 mt-2 print:hidden">
+        Planning tool — always confirm rotations against your league's official rules.
+      </p>
+    </div>
+  );
+}
