@@ -1,21 +1,19 @@
 import { useState } from 'react';
 import { Plus, X, Users } from 'lucide-react';
 import { makePlayerId } from '../lib/id';
-import { FRONT_ROW_ZONES, BACK_ROW_ZONES, zoneLabel } from '../lib/rotation';
+import { zoneLabel } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
 import DataTransfer from './DataTransfer';
 
-const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L'];
+const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L', 'DS'];
 const POSITION_NAMES = {
   OH: 'Outside Hitter',
   MB: 'Middle Blocker',
   OPP: 'Opposite / Right-side Hitter',
   S: 'Setter',
   L: 'Libero',
+  DS: 'Defensive Specialist',
 };
-
-// Rows shown top (net) to bottom, matching the court diagram's visual layout.
-const LAYOUT_ZONES = [...FRONT_ROW_ZONES, ...BACK_ROW_ZONES];
 
 export default function RosterPanel({
   roster,
@@ -97,19 +95,6 @@ export default function RosterPanel({
     const usedElsewhere = new Set(slots.filter((id, idx) => idx !== myIndex && id));
     return players.filter(
       (p) => !liberoIds.has(p.id) && (p.id === currentValue || !usedElsewhere.has(p.id))
-    );
-  }
-
-  // Same idea for liberos: a player already claimed as the target of one libero
-  // shouldn't also be selectable as the target of the other.
-  function liberoTargetOptions(liberoPlayerId, currentForPlayerId) {
-    const usedByOtherLibero = new Set(
-      liberos
-        .filter((l) => l.playerId !== liberoPlayerId && l.forPlayerId)
-        .map((l) => l.forPlayerId)
-    );
-    return players.filter(
-      (p) => !liberoIds.has(p.id) && (p.id === currentForPlayerId || !usedByOtherLibero.has(p.id))
     );
   }
 
@@ -219,28 +204,53 @@ export default function RosterPanel({
         <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2">
           Starting Lineup — Rotation 1
         </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {LAYOUT_ZONES.map((zone) => (
-            <label key={zone} className="flex items-center gap-2 text-xs">
-              <span className="font-data text-chalk-dim w-14 flex-shrink-0">{zoneLabel(zone)}</span>
-              <select
-                value={slots[zone - 1] || ''}
-                onChange={(e) => assignZone(zone, e.target.value)}
-                className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-1.5 py-2 text-base text-chalk truncate"
-              >
-                <option value="">—</option>
-                {lineupOptionsForZone(zone).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {playerOptionLabel(p)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5, 6].map((zone) => {
+            const playerId = slots[zone - 1];
+            return (
+              <div key={zone} className="flex items-center gap-2 text-xs">
+                <span className="font-data text-chalk-dim w-14 flex-shrink-0">{zoneLabel(zone)}</span>
+                <select
+                  value={playerId || ''}
+                  onChange={(e) => assignZone(zone, e.target.value)}
+                  className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-1.5 py-2 text-base text-chalk truncate"
+                >
+                  <option value="">—</option>
+                  {lineupOptionsForZone(zone).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {playerOptionLabel(p)}
+                    </option>
+                  ))}
+                </select>
+                {liberos.map((l, idx) => {
+                  const isActive = l.forPlayerId === playerId;
+                  const takenByOther =
+                    !isActive &&
+                    liberos.some((other) => other.playerId !== l.playerId && other.forPlayerId === playerId);
+                  return (
+                    <button
+                      key={l.playerId}
+                      onClick={() => updateLibero(l.playerId, { forPlayerId: isActive ? null : playerId })}
+                      disabled={!playerId || takenByOther}
+                      title={`${roster[l.playerId]?.name || 'Libero'} subs in/out for whoever's here`}
+                      className={`flex-shrink-0 w-9 h-9 rounded-full text-xs font-display font-semibold border transition-colors disabled:opacity-30 disabled:pointer-events-none ${
+                        isActive
+                          ? 'bg-court-line text-chalk border-court-line'
+                          : 'bg-ink text-chalk-dim border-ink-line hover:border-court-line/50 hover:text-chalk'
+                      }`}
+                    >
+                      {liberos.length > 1 ? `L${idx + 1}` : 'L'}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
         <p className="text-[11px] text-chalk-dim mt-1.5">
           This is where each player stands the instant Rotation 1 begins. Zone 1 (RB) serves
           first — the same order then carries through every later rotation.
+          {liberos.length > 0 && ' Tap L to set who a libero subs in/out for.'}
         </p>
       </div>
 
@@ -252,22 +262,14 @@ export default function RosterPanel({
           <div className="space-y-2">
             {liberos.map((l) => (
               <div key={l.playerId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 text-chalk">
+                <div className="flex items-center gap-1.5 text-chalk flex-wrap">
                   <span className="font-medium">{roster[l.playerId]?.name}</span>
-                  <span className="text-chalk-dim">comes in/out for</span>
+                  <span className="text-chalk-dim">
+                    {l.forPlayerId
+                      ? `subs in/out for ${roster[l.forPlayerId]?.name || '—'}`
+                      : 'not assigned yet — tap L above'}
+                  </span>
                 </div>
-                <select
-                  value={l.forPlayerId || ''}
-                  onChange={(e) => updateLibero(l.playerId, { forPlayerId: e.target.value || null })}
-                  className="w-full bg-ink border border-ink-line rounded px-1.5 py-2 text-base"
-                >
-                  <option value="">Select a player…</option>
-                  {liberoTargetOptions(l.playerId, l.forPlayerId).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {playerOptionLabel(p)}
-                    </option>
-                  ))}
-                </select>
                 <label className="flex items-center gap-2 p-2 -m-2">
                   <input
                     type="checkbox"
