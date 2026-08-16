@@ -68,20 +68,36 @@ export function liberoTargets(libero) {
 }
 
 /**
+ * Reads which single target (if any) a libero is authorized to serve in
+ * place of. Serving eligibility belongs to one specific teammate, not
+ * "whoever the libero happens to be covering at the moment" - a libero
+ * covering multiple players may only be allowed to serve for one of them,
+ * or for none at all. Tolerates the older single-target shape, where a
+ * global `canServe: true` meant "serves for my one (and only) target."
+ */
+export function liberoServesFor(libero) {
+  if ('servesForPlayerId' in libero) return libero.servesForPlayerId || null;
+  if (libero.canServe && libero.forPlayerId) return libero.forPlayerId;
+  return null;
+}
+
+/**
  * Resolve which roster player occupies each zone for a rotation, accounting
  * for liberos and planned (non-libero) substitutions.
  * `slots` is an array of 6 player ids (index 0 = S1 ... index 5 = S6).
  *
- * `liberos` is an array of { playerId, forPlayerIds, canServe } (0-2 entries).
- * A libero can be assigned multiple targets - e.g. covering whichever of two
- * different back-row players needs it as the rotation cycles. For each
- * rotation, a libero is on court for the FIRST of their assigned targets
- * whose slot is currently in the back row (list order settles the rare case
- * where more than one assigned target is back-row simultaneously - a libero
- * can only be in one place). Steps off once that target's slot rotates to
- * the front row. If canServe is false and the active target's slot lands on
- * zone 1, the original player is shown serving instead (libero sits out
- * their own serve turn).
+ * `liberos` is an array of { playerId, forPlayerIds, servesForPlayerId }
+ * (0-2 entries). A libero can be assigned multiple targets - e.g. covering
+ * whichever of two different back-row players needs it as the rotation
+ * cycles. For each rotation, a libero is on court for the FIRST of their
+ * assigned targets whose slot is currently in the back row (list order
+ * settles the rare case where more than one assigned target is back-row
+ * simultaneously - a libero can only be in one place). Steps off once that
+ * target's slot rotates to the front row. Separately, `servesForPlayerId`
+ * names the ONE target (if any) this libero is allowed to serve in place
+ * of - if the libero's currently-active target isn't that specific player,
+ * the original player serves instead (libero sits out just that turn, same
+ * as if serving weren't allowed at all).
  *
  * `substitutions` is an array of { subPlayerId, forPlayerId, rotations }.
  * A substitution is active for a rotation if `rotations` is empty (meaning
@@ -98,13 +114,17 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
   // covering this rotation, keyed by the zone that target currently occupies.
   const activeLiberoByZone = {};
   for (const libero of liberos) {
+    const servesFor = liberoServesFor(libero);
     for (const targetId of liberoTargets(libero)) {
       const slotIdx = slots.indexOf(targetId);
       if (slotIdx === -1) continue;
       const zone = zoneForSlot(rotationNum, slotIdx + 1);
       if (BACK_ROW_ZONES.includes(zone)) {
         if (!activeLiberoByZone[zone]) {
-          activeLiberoByZone[zone] = { liberoPlayerId: libero.playerId, canServe: libero.canServe };
+          activeLiberoByZone[zone] = {
+            liberoPlayerId: libero.playerId,
+            canServeThisTarget: servesFor === targetId,
+          };
         }
         break; // this libero has its active target for this rotation - don't check their other targets
       }
@@ -134,8 +154,9 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
       occupantId = activeSubByTarget[playerId];
       isSub = true;
     } else if (activeLibero) {
-      if (zone === 1 && !activeLibero.canServe) {
-        // libero sits out their own serve turn
+      if (zone === 1 && !activeLibero.canServeThisTarget) {
+        // libero sits out this specific serve turn - not authorized to
+        // serve for whoever they're currently covering
         occupantId = playerId;
       } else {
         occupantId = activeLibero.liberoPlayerId;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, Users, Repeat, ListOrdered } from 'lucide-react';
 import { makePlayerId, makeId } from '../lib/id';
-import { liberoTargets } from '../lib/rotation';
+import { liberoTargets, liberoServesFor } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
 
 const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L', 'DS'];
@@ -62,7 +62,15 @@ export default function RosterPanel({
     setLiberos(
       liberos
         .filter((l) => l.playerId !== id)
-        .map((l) => ({ ...l, forPlayerIds: liberoTargets(l).filter((t) => t !== id) }))
+        .map((l) => {
+          const nextTargets = liberoTargets(l).filter((t) => t !== id);
+          const servesFor = liberoServesFor(l);
+          return {
+            playerId: l.playerId,
+            forPlayerIds: nextTargets,
+            servesForPlayerId: servesFor === id ? null : servesFor,
+          };
+        })
     );
     setSubstitutions(substitutions.filter((s) => s.subPlayerId !== id && s.forPlayerId !== id));
   }
@@ -81,7 +89,7 @@ export default function RosterPanel({
     if (liberoIds.has(playerId)) {
       setLiberos(liberos.filter((l) => l.playerId !== playerId));
     } else if (liberos.length < 2) {
-      setLiberos([...liberos, { playerId, forPlayerIds: [], canServe: false }]);
+      setLiberos([...liberos, { playerId, forPlayerIds: [], servesForPlayerId: null }]);
     }
   }
 
@@ -95,10 +103,18 @@ export default function RosterPanel({
   function toggleLiberoTarget(liberoPlayerId, targetPlayerId) {
     const libero = liberos.find((l) => l.playerId === liberoPlayerId);
     const targets = liberoTargets(libero);
-    const nextTargets = targets.includes(targetPlayerId)
+    const removing = targets.includes(targetPlayerId);
+    const nextTargets = removing
       ? targets.filter((id) => id !== targetPlayerId)
       : [...targets, targetPlayerId];
-    updateLibero(liberoPlayerId, { forPlayerIds: nextTargets });
+    const patch = { forPlayerIds: nextTargets };
+    // If the target being removed was who this libero serves for, that
+    // designation no longer makes sense - clear it rather than leave it
+    // silently pointing at someone no longer covered.
+    if (removing && liberoServesFor(libero) === targetPlayerId) {
+      patch.servesForPlayerId = null;
+    }
+    updateLibero(liberoPlayerId, patch);
   }
 
   function playerOptionLabel(p) {
@@ -323,11 +339,17 @@ export default function RosterPanel({
           <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2">
             Libero Setup
           </h3>
+          <p className="text-[11px] text-chalk-dim mb-2">
+            Covering a player and being allowed to serve for them are separate — a libero can
+            cover several players defensively but usually only serves in place of one specific
+            teammate, check your league's rule.
+          </p>
           <div className="space-y-2">
             {liberos.map((l) => {
               const targets = liberoTargets(l);
+              const servesFor = liberoServesFor(l);
               return (
-                <div key={l.playerId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-1.5">
+                <div key={l.playerId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-2">
                   <div className="flex items-center gap-1.5 text-chalk flex-wrap">
                     <span className="font-medium">{roster[l.playerId]?.name}</span>
                     <span className="text-chalk-dim">
@@ -336,15 +358,25 @@ export default function RosterPanel({
                         : 'not assigned yet — tap L above'}
                     </span>
                   </div>
-                  <label className="flex items-center gap-2 p-2 -m-2">
-                    <input
-                      type="checkbox"
-                      checked={l.canServe}
-                      onChange={(e) => updateLibero(l.playerId, { canServe: e.target.checked })}
-                      className="w-5 h-5"
-                    />
-                    <span className="text-chalk-dim">Allowed to serve (check your league's rule)</span>
-                  </label>
+                  {targets.length > 0 && (
+                    <label className="flex items-center gap-2">
+                      <span className="text-chalk-dim flex-shrink-0">Serves in place of</span>
+                      <select
+                        value={servesFor || ''}
+                        onChange={(e) =>
+                          updateLibero(l.playerId, { servesForPlayerId: e.target.value || null })
+                        }
+                        className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-1.5 text-chalk truncate"
+                      >
+                        <option value="">Never (sits out every serve)</option>
+                        {targets.map((id) => (
+                          <option key={id} value={id}>
+                            {roster[id]?.name || '—'}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
               );
             })}

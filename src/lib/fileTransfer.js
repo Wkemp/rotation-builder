@@ -1,5 +1,5 @@
 import { makeId } from './id';
-import { liberoTargets } from './rotation';
+import { liberoTargets, liberoServesFor } from './rotation';
 
 const APP_TAG = 'rotation-builder';
 const FORMAT_VERSION = 1;
@@ -88,11 +88,14 @@ export function remapTeamIds(team) {
       ...oldSet,
       id: newSetId,
       slots: oldSet.slots.map((pid) => (pid ? playerIdMap[pid] || null : null)),
-      liberos: (oldSet.liberos || []).map((l) => ({
-        playerId: playerIdMap[l.playerId] || l.playerId,
-        canServe: !!l.canServe,
-        forPlayerIds: liberoTargets(l).map((tid) => playerIdMap[tid] || tid),
-      })),
+      liberos: (oldSet.liberos || []).map((l) => {
+        const servesFor = liberoServesFor(l);
+        return {
+          playerId: playerIdMap[l.playerId] || l.playerId,
+          forPlayerIds: liberoTargets(l).map((tid) => playerIdMap[tid] || tid),
+          servesForPlayerId: servesFor ? playerIdMap[servesFor] || null : null,
+        };
+      }),
       substitutions: (oldSet.substitutions || []).map((s) => ({
         ...s,
         id: makeId('sub_'),

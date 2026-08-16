@@ -88,6 +88,43 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
         })}
       </div>
 
+      {/* Libero - shows who's currently on court vs. sitting out, for the rotation being viewed */}
+      {liberos.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-ink-line">
+          <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2">
+            Libero
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {liberos.map((l) => {
+              const activeEntry = Object.values(court).find((c) => c.isLibero && c.playerId === l.playerId);
+              const isActive = !!activeEntry;
+              const liberoPlayer = playerAt(l.playerId);
+              const coveringName = activeEntry ? playerAt(activeEntry.originalPlayerId).name : null;
+              return (
+                <div
+                  key={l.playerId}
+                  className="flex flex-col items-center transition-opacity duration-500"
+                  style={{ opacity: isActive ? 1 : 0.4 }}
+                >
+                  <div
+                    className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
+                      isActive
+                        ? 'bg-court-line text-chalk border-court-line'
+                        : 'bg-ink text-chalk-dim border-ink-line'
+                    }`}
+                  >
+                    {liberoPlayer.number || 'L'}
+                  </div>
+                  <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
+                    {isActive ? `for ${coveringName}` : 'on bench'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Bench - planned substitutes, lit up when active for the rotation being viewed */}
       {substitutions.length > 0 && (
         <div className="mt-4 pt-3 border-t border-ink-line">
