@@ -2,7 +2,7 @@ import { resolveCourt, zoneLabel } from '../lib/rotation';
 
 const LAYOUT_ZONES = [4, 3, 2, 5, 6, 1]; // front row then back row, left to right
 
-export default function CheatSheet({ teamName, slots, liberos, roster }) {
+export default function CheatSheet({ teamName, slots, liberos, substitutions = [], roster }) {
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
 
   return (
@@ -57,6 +57,33 @@ export default function CheatSheet({ teamName, slots, liberos, roster }) {
           );
         })}
       </div>
+
+      {substitutions.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-gray-300 print:mt-3 print:pt-3 print:shrink-0">
+          <h3 className="font-display font-semibold text-sm mb-1.5 print:text-lg print:mb-2">
+            Planned Substitutions
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 print:grid-cols-3 print:gap-3 text-[11px] print:text-sm">
+            {substitutions.map((s) => (
+              <div
+                key={s.id}
+                className="border border-gray-300 rounded px-2 py-1.5 print:border-2 print:border-gray-400 print:rounded-md print:px-3 print:py-2"
+              >
+                <div className="font-medium">
+                  {playerAt(s.subPlayerId).name || '—'}{' '}
+                  <span className="font-normal text-gray-500">in for</span>{' '}
+                  {playerAt(s.forPlayerId).name || '—'}
+                </div>
+                <div className="text-gray-500 print:text-gray-600">
+                  {s.rotations && s.rotations.length > 0
+                    ? `Rotation${s.rotations.length > 1 ? 's' : ''} ${s.rotations.join(', ')}`
+                    : 'Any rotation'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

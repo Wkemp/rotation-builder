@@ -20,6 +20,8 @@ export default function App() {
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
+  // Older saved rotation sets (before this feature existed) won't have this field yet.
+  const substitutions = activeSet.substitutions || [];
 
   // --- Roster (team) level ---
 
@@ -127,6 +129,7 @@ export default function App() {
 
   const setSlots = (slots) => updateActiveRotationSet({ slots });
   const setLiberos = (liberos) => updateActiveRotationSet({ liberos });
+  const setSubstitutions = (subs) => updateActiveRotationSet({ substitutions: subs });
 
   // --- File export/import ---
 
@@ -211,6 +214,8 @@ export default function App() {
               setSlots={setSlots}
               liberos={activeSet.liberos}
               setLiberos={setLiberos}
+              substitutions={substitutions}
+              setSubstitutions={setSubstitutions}
               rotationSets={activeRoster.rotationSets}
               activeRotationSetId={activeRoster.activeRotationSetId}
               onSwitchRotationSet={switchRotationSet}
@@ -273,6 +278,7 @@ export default function App() {
             teamName={`${activeRoster.name} — ${activeSet.name}`}
             slots={activeSet.slots}
             liberos={activeSet.liberos}
+            substitutions={substitutions}
             roster={activeRoster.players}
           />
         </main>

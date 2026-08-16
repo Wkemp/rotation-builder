@@ -92,6 +92,12 @@ export function remapTeamIds(team) {
         playerId: playerIdMap[l.playerId] || l.playerId,
         forPlayerId: l.forPlayerId ? playerIdMap[l.forPlayerId] || null : null,
       })),
+      substitutions: (oldSet.substitutions || []).map((s) => ({
+        ...s,
+        id: makeId('sub_'),
+        subPlayerId: playerIdMap[s.subPlayerId] || s.subPlayerId,
+        forPlayerId: playerIdMap[s.forPlayerId] || s.forPlayerId,
+      })),
     };
   }
 

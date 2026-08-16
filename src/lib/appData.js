@@ -6,6 +6,7 @@ export function createEmptyRotationSet(name = 'Default') {
     name,
     slots: [null, null, null, null, null, null],
     liberos: [],
+    substitutions: [],
   };
 }
 
@@ -59,6 +60,7 @@ export function createInitialAppData() {
       name: 'Default',
       slots: oldSlots || [null, null, null, null, null, null],
       liberos: oldLiberos || [],
+      substitutions: [],
     };
     const roster = {
       id: makeId('team_'),
