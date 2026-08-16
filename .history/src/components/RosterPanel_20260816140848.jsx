@@ -3,6 +3,7 @@ import { Plus, X, Users } from 'lucide-react';
 import { makePlayerId } from '../lib/id';
 import { zoneLabel } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
+import DataTransfer from './DataTransfer';
 
 const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L', 'DS'];
 const POSITION_NAMES = {
@@ -28,6 +29,9 @@ export default function RosterPanel({
   onDuplicateRotationSet,
   onRenameRotationSet,
   onDeleteRotationSet,
+  onExportTeam,
+  onExportBackup,
+  onImportFile,
 }) {
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
@@ -280,6 +284,12 @@ export default function RosterPanel({
           </div>
         </div>
       )}
+
+      <DataTransfer
+        onExportTeam={onExportTeam}
+        onExportBackup={onExportBackup}
+        onImportFile={onImportFile}
+      />
     </div>
   );
 }

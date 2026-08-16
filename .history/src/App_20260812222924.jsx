@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Printer, Tag } from 'lucide-react';
+import { Printer, Rows3, Grid2x2, Tag } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
 import CheatSheet from './components/CheatSheet';
 import EntitySwitcher from './components/EntitySwitcher';
-import DataTransfer from './components/DataTransfer';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { createInitialAppData, createEmptyRoster, createEmptyRotationSet, nextDefaultName } from './lib/appData';
 import { makeId } from './lib/id';
@@ -13,10 +12,13 @@ import { exportTeamFile, exportBackupFile, parseImportPayload, remapTeamIds } fr
 
 export default function App() {
   const [appData, setAppData] = useLocalStorage('rb.data', createInitialAppData);
+  const [layout, setLayout] = useLocalStorage('rb.layout', 'stacked'); // 'stacked' | 'side'
   const [showZoneLabels, setShowZoneLabels] = useLocalStorage('rb.zoneLabels', true);
   const [startRotation, setStartRotation] = useLocalStorage('rb.startRotation', 1);
   const [current, setCurrent] = useState(1);
   const [view, setView] = useState('court'); // 'court' | 'cheatsheet'
+
+  const isSide = layout === 'side';
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
@@ -166,21 +168,30 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-ink text-chalk font-body pb-10">
-      <header className="border-b border-ink-line print:hidden">
-        <div className="max-w-[75rem] mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
-          <div className="flex-1 min-w-0 max-w-md">
-            <EntitySwitcher
-              items={appData.rosters}
-              activeId={appData.activeRosterId}
-              onSwitch={switchRoster}
-              onCreate={createRoster}
-              onRename={renameRoster}
-              onDelete={deleteRoster}
-              label="Team"
-            />
-          </div>
-          <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 flex-shrink-0">
+      <header className="border-b border-ink-line px-4 py-3 flex items-center gap-3 print:hidden">
+        <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <EntitySwitcher
+            items={appData.rosters}
+            activeId={appData.activeRosterId}
+            onSwitch={switchRoster}
+            onCreate={createRoster}
+            onRename={renameRoster}
+            onDelete={deleteRoster}
+            label="Team"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {view === 'court' && (
+            <button
+              onClick={() => setLayout(isSide ? 'stacked' : 'side')}
+              className="flex items-center gap-1.5 h-11 px-3 rounded-lg text-sm font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors"
+            >
+              {isSide ? <Rows3 size={16} /> : <Grid2x2 size={16} />}
+              <span className="hidden sm:inline">{isSide ? 'Stacked' : 'Side-by-side'}</span>
+            </button>
+          )}
+          <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1">
             <button
               onClick={() => setView('court')}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
@@ -202,8 +213,8 @@ export default function App() {
       </header>
 
       {view === 'court' ? (
-        <main className="max-w-[75rem] mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
-          <section className="max-w-md mx-auto panels:mx-0 panels:flex-shrink-0 space-y-5 mb-6 panels:mb-0">
+        <main className={`p-4 gap-6 ${isSide ? 'lg:flex lg:items-start' : ''}`}>
+          <section className={isSide ? 'lg:w-1/3 lg:flex-shrink-0 space-y-5' : 'space-y-5 mb-6'}>
             <RosterPanel
               roster={activeRoster.players}
               setRoster={setPlayers}
@@ -218,10 +229,13 @@ export default function App() {
               onDuplicateRotationSet={duplicateRotationSet}
               onRenameRotationSet={renameRotationSet}
               onDeleteRotationSet={deleteRotationSet}
+              onExportTeam={handleExportTeam}
+              onExportBackup={handleExportBackup}
+              onImportFile={handleImportFile}
             />
           </section>
 
-          <section className="max-w-2xl mx-auto panels:mx-0 panels:flex-shrink-0">
+          <section className={isSide ? 'lg:w-2/3' : ''}>
             <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
                 <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
@@ -262,7 +276,7 @@ export default function App() {
           </section>
         </main>
       ) : (
-        <main className="max-w-[75rem] mx-auto p-4">
+        <main className="p-4">
           <button
             onClick={() => window.print()}
             className="mb-4 flex items-center gap-1.5 h-11 bg-gold text-ink rounded-lg px-4 text-sm font-medium hover:bg-gold-dim transition-colors print:hidden"
@@ -278,15 +292,7 @@ export default function App() {
         </main>
       )}
 
-      <div className="max-w-[75rem] mx-auto px-4 mt-2 print:hidden">
-        <DataTransfer
-          onExportTeam={handleExportTeam}
-          onExportBackup={handleExportBackup}
-          onImportFile={handleImportFile}
-        />
-      </div>
-
-      <p className="max-w-[75rem] mx-auto text-center text-[11px] text-chalk-dim/60 px-4 mt-4 print:hidden">
+      <p className="text-center text-[11px] text-chalk-dim/60 px-4 mt-2 print:hidden">
         Planning tool — always confirm rotations against your league's official rules.
       </p>
     </div>
