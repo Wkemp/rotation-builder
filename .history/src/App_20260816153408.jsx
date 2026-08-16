@@ -170,7 +170,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-ink text-chalk font-body pb-10">
       <header className="border-b border-ink-line print:hidden">
-        <div className="max-w-[88rem] mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-[75rem] mx-auto px-4 py-3 flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0 max-w-md">
             <EntitySwitcher
@@ -205,8 +205,8 @@ export default function App() {
       </header>
 
       {view === 'court' ? (
-        <main className="max-w-[88rem] mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
-          <section className="max-w-md mx-auto panels:w-[28rem] panels:mx-0 panels:flex-shrink-0 space-y-5 mb-6 panels:mb-0">
+        <main className="max-w-300 mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
+          <section className="max-w-md mx-auto panels:mx-0 panels:flex-shrink-0 space-y-5 mb-6 panels:mb-0">
             <RosterPanel
               roster={activeRoster.players}
               setRoster={setPlayers}
@@ -226,7 +226,7 @@ export default function App() {
             />
           </section>
 
-          <section className="max-w-4xl mx-auto panels:w-[56rem] panels:mx-0 panels:flex-shrink-0">
+          <section className="max-w-2xl mx-auto panels:mx-0 panels:shrink-0">
             <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
                 <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
@@ -267,7 +267,7 @@ export default function App() {
           </section>
         </main>
       ) : (
-        <main className="max-w-[88rem] mx-auto p-4">
+        <main className="max-w-[75rem] mx-auto p-4">
           <button
             onClick={() => window.print()}
             className="mb-4 flex items-center gap-1.5 h-11 bg-gold text-ink rounded-lg px-4 text-sm font-medium hover:bg-gold-dim transition-colors print:hidden"
@@ -284,7 +284,7 @@ export default function App() {
         </main>
       )}
 
-      <div className="max-w-[88rem] mx-auto px-4 mt-2 print:hidden">
+      <div className="max-w-[75rem] mx-auto px-4 mt-2 print:hidden">
         <DataTransfer
           onExportTeam={handleExportTeam}
           onExportBackup={handleExportBackup}
@@ -292,7 +292,7 @@ export default function App() {
         />
       </div>
 
-      <p className="max-w-[88rem] mx-auto text-center text-[11px] text-chalk-dim/60 px-4 mt-4 print:hidden">
+      <p className="max-w-[75rem] mx-auto text-center text-[11px] text-chalk-dim/60 px-4 mt-4 print:hidden">
         Planning tool — always confirm rotations against your league's official rules.
       </p>
     </div>
