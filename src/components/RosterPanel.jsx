@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Users, Repeat, ListOrdered } from 'lucide-react';
+import { Plus, X, Users, Repeat, ListOrdered, ChevronDown, ChevronUp } from 'lucide-react';
 import { makePlayerId, makeId } from '../lib/id';
 import { liberoTargets, liberoServesFor } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
@@ -38,6 +38,7 @@ export default function RosterPanel({
   const [newSubPlayerId, setNewSubPlayerId] = useState('');
   const [newForPlayerId, setNewForPlayerId] = useState('');
   const [newSubRotations, setNewSubRotations] = useState([]);
+  const [rosterCollapsed, setRosterCollapsed] = useState(false);
 
   const players = Object.values(roster).sort((a, b) => (a.number || 0) - (b.number || 0));
   const liberoIds = new Set(liberos.map((l) => l.playerId));
@@ -169,9 +170,24 @@ export default function RosterPanel({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2 flex items-center gap-1.5">
-          <Users size={14} /> Roster
-        </h3>
+        <button
+          onClick={() => setRosterCollapsed(!rosterCollapsed)}
+          className="w-full flex items-center justify-between gap-1.5 py-1 mb-2"
+        >
+          <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase flex items-center gap-1.5">
+            <Users size={14} /> Roster
+            {rosterCollapsed && players.length > 0 && (
+              <span className="font-data text-chalk-dim/70 normal-case">({players.length})</span>
+            )}
+          </h3>
+          {rosterCollapsed ? (
+            <ChevronDown size={16} className="text-chalk-dim" />
+          ) : (
+            <ChevronUp size={16} className="text-chalk-dim" />
+          )}
+        </button>
+        {!rosterCollapsed && (
+        <>
         <div className="flex gap-2 mb-2">
           <input
             value={newNumber}
@@ -253,6 +269,8 @@ export default function RosterPanel({
             <li className="text-xs text-chalk-dim italic py-2">Add players to build your lineup.</li>
           )}
         </ul>
+        </>
+        )}
       </div>
 
       <div className="bg-ink-raised/60 border border-ink-line rounded-lg px-2.5 py-2">

@@ -21,8 +21,14 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
   return (
     <div className="w-full select-none">
       <div className="relative w-full aspect-[3/2]">
-        {/* net */}
-        <div className="absolute -top-2 left-0 right-0 h-2 bg-[repeating-linear-gradient(90deg,var(--color-chalk)_0,var(--color-chalk)_8px,transparent_8px,transparent_16px)] opacity-70 rounded-full" />
+        {/* net: antennas at the sidelines, a solid top tape, and a mesh band
+            hanging below it - reads as an actual net, not a dashed line */}
+        <div className="absolute -top-4 left-0 right-0 h-4 pointer-events-none">
+          <div className="absolute -left-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
+          <div className="absolute -right-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
+          <div className="absolute top-0.5 left-0 right-0 h-1.5 bg-chalk rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)]" />
+          <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
+        </div>
 
         {/* court outline + grid */}
         <div className="absolute inset-0 rounded-lg border-2 border-chalk/40 overflow-hidden bg-ink-raised z-0">
@@ -88,77 +94,83 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
         })}
       </div>
 
-      {/* Libero - shows who's currently on court vs. sitting out, for the rotation being viewed */}
-      {liberos.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-ink-line">
-          <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2">
-            Libero
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {liberos.map((l) => {
-              const activeEntry = Object.values(court).find((c) => c.isLibero && c.playerId === l.playerId);
-              const isActive = !!activeEntry;
-              const liberoPlayer = playerAt(l.playerId);
-              const coveringName = activeEntry ? playerAt(activeEntry.originalPlayerId).name : null;
-              return (
-                <div
-                  key={l.playerId}
-                  className="flex flex-col items-center transition-opacity duration-500"
-                  style={{ opacity: isActive ? 1 : 0.4 }}
-                >
-                  <div
-                    className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
-                      isActive
-                        ? 'bg-court-line text-chalk border-court-line'
-                        : 'bg-ink text-chalk-dim border-ink-line'
-                    }`}
-                  >
-                    {liberoPlayer.number || 'L'}
-                  </div>
-                  <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
-                    {isActive ? `for ${coveringName}` : 'on bench'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Libero + Bench share one row: substitutions on the left, libero pinned
+          to the right end - no reason for either to cost its own line. */}
+      {(liberos.length > 0 || substitutions.length > 0) && (
+        <div className="mt-4 pt-3 border-t border-ink-line flex items-start gap-4">
+          {substitutions.length > 0 && (
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2">
+                Bench
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {substitutions.map((s) => {
+                  const isActive =
+                    !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
+                  const subPlayer = playerAt(s.subPlayerId);
+                  const forPlayer = playerAt(s.forPlayerId);
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex flex-col items-center transition-opacity duration-500"
+                      style={{ opacity: isActive ? 1 : 0.4 }}
+                    >
+                      <div
+                        className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
+                          isActive
+                            ? 'bg-sub text-chalk border-sub'
+                            : 'bg-ink text-chalk-dim border-ink-line'
+                        }`}
+                      >
+                        {subPlayer.number || '?'}
+                      </div>
+                      <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
+                        {isActive ? 'in for' : 'for'} {forPlayer.name || '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-      {/* Bench - planned substitutes, lit up when active for the rotation being viewed */}
-      {substitutions.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-ink-line">
-          <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2">
-            Bench
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {substitutions.map((s) => {
-              const isActive =
-                !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
-              const subPlayer = playerAt(s.subPlayerId);
-              const forPlayer = playerAt(s.forPlayerId);
-              return (
-                <div
-                  key={s.id}
-                  className="flex flex-col items-center transition-opacity duration-500"
-                  style={{ opacity: isActive ? 1 : 0.4 }}
-                >
-                  <div
-                    className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
-                      isActive
-                        ? 'bg-sub text-chalk border-sub'
-                        : 'bg-ink text-chalk-dim border-ink-line'
-                    }`}
-                  >
-                    {subPlayer.number || '?'}
-                  </div>
-                  <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
-                    {isActive ? 'in for' : 'for'} {forPlayer.name || '—'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {liberos.length > 0 && (
+            <div className="flex-shrink-0 ml-auto">
+              <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2 text-right">
+                Libero
+              </div>
+              <div className="flex flex-wrap justify-end gap-3">
+                {liberos.map((l) => {
+                  const activeEntry = Object.values(court).find(
+                    (c) => c.isLibero && c.playerId === l.playerId
+                  );
+                  const isActive = !!activeEntry;
+                  const liberoPlayer = playerAt(l.playerId);
+                  const coveringName = activeEntry ? playerAt(activeEntry.originalPlayerId).name : null;
+                  return (
+                    <div
+                      key={l.playerId}
+                      className="flex flex-col items-center transition-opacity duration-500"
+                      style={{ opacity: isActive ? 1 : 0.4 }}
+                    >
+                      <div
+                        className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
+                          isActive
+                            ? 'bg-court-line text-chalk border-court-line'
+                            : 'bg-ink text-chalk-dim border-ink-line'
+                        }`}
+                      >
+                        {liberoPlayer.number || 'L'}
+                      </div>
+                      <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
+                        {isActive ? `for ${coveringName}` : 'on bench'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
