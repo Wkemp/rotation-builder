@@ -4,6 +4,7 @@ import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
 import CheatSheet from './components/CheatSheet';
+import ServeOrderSheet from './components/ServeOrderSheet';
 import EntitySwitcher from './components/EntitySwitcher';
 import DataTransfer from './components/DataTransfer';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -16,7 +17,7 @@ export default function App() {
   const [showZoneLabels, setShowZoneLabels] = useLocalStorage('rb.zoneLabels', true);
   const [startRotation, setStartRotation] = useLocalStorage('rb.startRotation', 1);
   const [current, setCurrent] = useState(1);
-  const [view, setView] = useState('court'); // 'court' | 'cheatsheet'
+  const [view, setView] = useState('court'); // 'court' | 'cheatsheet' | 'serveorder'
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
@@ -200,6 +201,14 @@ export default function App() {
             >
               Cheat Sheet
             </button>
+            <button
+              onClick={() => setView('serveorder')}
+              className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+                view === 'serveorder' ? 'bg-gold text-ink' : 'text-chalk-dim'
+              }`}
+            >
+              Serve Order
+            </button>
           </div>
         </div>
       </header>
@@ -223,6 +232,7 @@ export default function App() {
               onDuplicateRotationSet={duplicateRotationSet}
               onRenameRotationSet={renameRotationSet}
               onDeleteRotationSet={deleteRotationSet}
+              onShowServeOrder={() => setView('serveorder')}
             />
           </section>
 
@@ -267,7 +277,7 @@ export default function App() {
             />
           </section>
         </main>
-      ) : (
+      ) : view === 'cheatsheet' ? (
         <main className="max-w-[88rem] mx-auto p-4">
           <button
             onClick={() => window.print()}
@@ -280,6 +290,20 @@ export default function App() {
             slots={activeSet.slots}
             liberos={activeSet.liberos}
             substitutions={substitutions}
+            roster={activeRoster.players}
+          />
+        </main>
+      ) : (
+        <main className="max-w-[88rem] mx-auto p-4">
+          <button
+            onClick={() => window.print()}
+            className="mb-4 flex items-center gap-1.5 h-11 bg-gold text-ink rounded-lg px-4 text-sm font-medium hover:bg-gold-dim transition-colors print:hidden"
+          >
+            <Printer size={16} /> Print serve order
+          </button>
+          <ServeOrderSheet
+            teamName={`${activeRoster.name} — ${activeSet.name}`}
+            slots={activeSet.slots}
             roster={activeRoster.players}
           />
         </main>

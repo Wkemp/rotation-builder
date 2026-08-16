@@ -76,7 +76,8 @@ button, a, label, input, select {
   }
 }
 
-/* Printable cheat sheet: only this section prints, everything else hides */
+/* Printable sheets (cheat sheet, serve order): only the active one prints,
+   everything else hides */
 @media print {
   @page {
     size: landscape;
@@ -85,10 +86,10 @@ button, a, label, input, select {
   body * {
     visibility: hidden;
   }
-  #cheat-sheet, #cheat-sheet * {
+  .printable, .printable * {
     visibility: visible;
   }
-  #cheat-sheet {
+  .printable {
     position: absolute;
     left: 0;
     top: 0;

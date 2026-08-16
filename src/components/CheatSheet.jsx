@@ -7,8 +7,7 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
 
   return (
     <div
-      id="cheat-sheet"
-      className="bg-white text-black p-6 rounded-lg print:p-0 print:rounded-none print:h-screen print:flex print:flex-col"
+      className="printable bg-white text-black p-6 rounded-lg print:p-0 print:rounded-none print:h-screen print:flex print:flex-col"
     >
       <div className="flex items-baseline justify-between mb-4 border-b-2 border-black pb-2 print:mb-3 print:pb-2 print:shrink-0">
         <h2 className="font-display text-2xl font-semibold print:text-3xl">

@@ -56,18 +56,32 @@ export function zoneForSlot(rotationNum, slotNum) {
 }
 
 /**
+ * Reads a libero's assigned targets regardless of data shape - tolerates
+ * older saved data that used a single `forPlayerId` before liberos could
+ * have multiple targets, so existing saved lineups don't need to be
+ * reconfigured after this change.
+ */
+export function liberoTargets(libero) {
+  if (Array.isArray(libero.forPlayerIds)) return libero.forPlayerIds;
+  if (libero.forPlayerId) return [libero.forPlayerId];
+  return [];
+}
+
+/**
  * Resolve which roster player occupies each zone for a rotation, accounting
  * for liberos and planned (non-libero) substitutions.
  * `slots` is an array of 6 player ids (index 0 = S1 ... index 5 = S6).
- * `liberos` is an array of { playerId, forPlayerId, canServe } (0-2 entries) —
- * `forPlayerId` is the roster player this libero swaps in/out for. Which slot
- * that resolves to is looked up fresh from `slots` every call, so if the
- * starting lineup changes later, the libero automatically follows whichever
- * slot that player is in rather than going stale.
- * A libero is on court whenever their target's slot is in a back-row zone;
- * steps off (the original player returns) once that slot rotates to a
- * front-row zone. If canServe is false and the slot lands on zone 1, the
- * original player is shown serving instead (libero sits that rotation out).
+ *
+ * `liberos` is an array of { playerId, forPlayerIds, canServe } (0-2 entries).
+ * A libero can be assigned multiple targets - e.g. covering whichever of two
+ * different back-row players needs it as the rotation cycles. For each
+ * rotation, a libero is on court for the FIRST of their assigned targets
+ * whose slot is currently in the back row (list order settles the rare case
+ * where more than one assigned target is back-row simultaneously - a libero
+ * can only be in one place). Steps off once that target's slot rotates to
+ * the front row. If canServe is false and the active target's slot lands on
+ * zone 1, the original player is shown serving instead (libero sits out
+ * their own serve turn).
  *
  * `substitutions` is an array of { subPlayerId, forPlayerId, rotations }.
  * A substitution is active for a rotation if `rotations` is empty (meaning
@@ -78,12 +92,24 @@ export function zoneForSlot(rotationNum, slotNum) {
  * isn't actually on the court for the libero to swap out from behind.
  */
 export function resolveCourt(rotationNum, slots, liberos = [], substitutions = []) {
-  const lineup = lineupForRotation(rotationNum);
   const result = {};
 
-  const activeLiberos = liberos
-    .filter((l) => l.forPlayerId)
-    .map((l) => ({ ...l, forSlot: slots.indexOf(l.forPlayerId) + 1 || null }));
+  // For each libero, resolve which single target (if any) they're actively
+  // covering this rotation, keyed by the zone that target currently occupies.
+  const activeLiberoByZone = {};
+  for (const libero of liberos) {
+    for (const targetId of liberoTargets(libero)) {
+      const slotIdx = slots.indexOf(targetId);
+      if (slotIdx === -1) continue;
+      const zone = zoneForSlot(rotationNum, slotIdx + 1);
+      if (BACK_ROW_ZONES.includes(zone)) {
+        if (!activeLiberoByZone[zone]) {
+          activeLiberoByZone[zone] = { liberoPlayerId: libero.playerId, canServe: libero.canServe };
+        }
+        break; // this libero has its active target for this rotation - don't check their other targets
+      }
+    }
+  }
 
   // Map starter playerId -> substitute playerId, for whichever planned
   // substitutions apply to this specific rotation.
@@ -96,9 +122,9 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
   }
 
   for (const zone of ZONES) {
-    const slotNum = lineup[zone];
+    const slotNum = slotInZone(rotationNum, zone);
     const playerId = slots[slotNum - 1];
-    const libero = activeLiberos.find((l) => l.forSlot === slotNum);
+    const activeLibero = activeLiberoByZone[zone];
 
     let occupantId = playerId;
     let isLibero = false;
@@ -107,12 +133,12 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
     if (playerId && activeSubByTarget[playerId]) {
       occupantId = activeSubByTarget[playerId];
       isSub = true;
-    } else if (libero && BACK_ROW_ZONES.includes(zone)) {
-      if (zone === 1 && !libero.canServe) {
+    } else if (activeLibero) {
+      if (zone === 1 && !activeLibero.canServe) {
         // libero sits out their own serve turn
         occupantId = playerId;
       } else {
-        occupantId = libero.playerId;
+        occupantId = activeLibero.liberoPlayerId;
         isLibero = true;
       }
     }

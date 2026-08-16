@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Plus, X, Users, Repeat } from 'lucide-react';
+import { Plus, X, Users, Repeat, ListOrdered } from 'lucide-react';
 import { makePlayerId, makeId } from '../lib/id';
-import { zoneLabel } from '../lib/rotation';
+import { liberoTargets } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
 
 const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L', 'DS'];
@@ -30,6 +30,7 @@ export default function RosterPanel({
   onDuplicateRotationSet,
   onRenameRotationSet,
   onDeleteRotationSet,
+  onShowServeOrder,
 }) {
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
@@ -58,7 +59,11 @@ export default function RosterPanel({
     delete next[id];
     setRoster(next);
     setSlots(slots.map((s) => (s === id ? null : s)));
-    setLiberos(liberos.filter((l) => l.playerId !== id));
+    setLiberos(
+      liberos
+        .filter((l) => l.playerId !== id)
+        .map((l) => ({ ...l, forPlayerIds: liberoTargets(l).filter((t) => t !== id) }))
+    );
     setSubstitutions(substitutions.filter((s) => s.subPlayerId !== id && s.forPlayerId !== id));
   }
 
@@ -76,12 +81,24 @@ export default function RosterPanel({
     if (liberoIds.has(playerId)) {
       setLiberos(liberos.filter((l) => l.playerId !== playerId));
     } else if (liberos.length < 2) {
-      setLiberos([...liberos, { playerId, forPlayerId: null, canServe: false }]);
+      setLiberos([...liberos, { playerId, forPlayerIds: [], canServe: false }]);
     }
   }
 
   function updateLibero(playerId, patch) {
     setLiberos(liberos.map((l) => (l.playerId === playerId ? { ...l, ...patch } : l)));
+  }
+
+  // A libero can cover more than one player - e.g. whichever of two
+  // different back-row players needs it as the rotation cycles. This toggles
+  // one target in/out of that libero's list rather than replacing it.
+  function toggleLiberoTarget(liberoPlayerId, targetPlayerId) {
+    const libero = liberos.find((l) => l.playerId === liberoPlayerId);
+    const targets = liberoTargets(libero);
+    const nextTargets = targets.includes(targetPlayerId)
+      ? targets.filter((id) => id !== targetPlayerId)
+      : [...targets, targetPlayerId];
+    updateLibero(liberoPlayerId, { forPlayerIds: nextTargets });
   }
 
   function playerOptionLabel(p) {
@@ -244,7 +261,9 @@ export default function RosterPanel({
             const playerId = slots[zone - 1];
             return (
               <div key={zone} className="flex items-center gap-2 text-xs">
-                <span className="font-data text-chalk-dim w-14 flex-shrink-0">{zoneLabel(zone)}</span>
+                <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-ink-raised border border-ink-line font-display font-bold text-lg text-gold flex-shrink-0">
+                  {zone}
+                </span>
                 <select
                   value={playerId || ''}
                   onChange={(e) => assignZone(zone, e.target.value)}
@@ -258,16 +277,19 @@ export default function RosterPanel({
                   ))}
                 </select>
                 {liberos.map((l, idx) => {
-                  const isActive = l.forPlayerId === playerId;
+                  const targets = liberoTargets(l);
+                  const isActive = targets.includes(playerId);
                   const takenByOther =
                     !isActive &&
-                    liberos.some((other) => other.playerId !== l.playerId && other.forPlayerId === playerId);
+                    liberos.some(
+                      (other) => other.playerId !== l.playerId && liberoTargets(other).includes(playerId)
+                    );
                   return (
                     <button
                       key={l.playerId}
-                      onClick={() => updateLibero(l.playerId, { forPlayerId: isActive ? null : playerId })}
+                      onClick={() => toggleLiberoTarget(l.playerId, playerId)}
                       disabled={!playerId || takenByOther}
-                      title={`${roster[l.playerId]?.name || 'Libero'} subs in/out for whoever's here`}
+                      title={`${roster[l.playerId]?.name || 'Libero'} covers whoever's here whenever they're in the back row`}
                       className={`flex-shrink-0 w-9 h-9 rounded-full text-xs font-display font-semibold border transition-colors disabled:opacity-30 disabled:pointer-events-none ${
                         isActive
                           ? 'bg-court-line text-chalk border-court-line'
@@ -283,10 +305,17 @@ export default function RosterPanel({
           })}
         </div>
         <p className="text-[11px] text-chalk-dim mt-1.5">
-          This is where each player stands the instant Rotation 1 begins. Zone 1 (RB) serves
-          first — the same order then carries through every later rotation.
-          {liberos.length > 0 && ' Tap L to set who a libero subs in/out for.'}
+          This is where each player stands the instant Rotation 1 begins. Zone 1 serves first —
+          the same order then carries through every later rotation.
+          {liberos.length > 0 &&
+            ' Tap L to add or remove who a libero covers - they can cover more than one player, automatically swapping in for whichever is currently in the back row.'}
         </p>
+        <button
+          onClick={onShowServeOrder}
+          className="mt-2 w-full h-10 flex items-center justify-center gap-1.5 bg-ink-raised border border-ink-line rounded-lg text-sm font-medium text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors"
+        >
+          <ListOrdered size={16} /> View Serve Order Sheet
+        </button>
       </div>
 
       {liberos.length > 0 && (
@@ -295,27 +324,30 @@ export default function RosterPanel({
             Libero Setup
           </h3>
           <div className="space-y-2">
-            {liberos.map((l) => (
-              <div key={l.playerId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-1.5">
-                <div className="flex items-center gap-1.5 text-chalk flex-wrap">
-                  <span className="font-medium">{roster[l.playerId]?.name}</span>
-                  <span className="text-chalk-dim">
-                    {l.forPlayerId
-                      ? `subs in/out for ${roster[l.forPlayerId]?.name || '—'}`
-                      : 'not assigned yet — tap L above'}
-                  </span>
+            {liberos.map((l) => {
+              const targets = liberoTargets(l);
+              return (
+                <div key={l.playerId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-chalk flex-wrap">
+                    <span className="font-medium">{roster[l.playerId]?.name}</span>
+                    <span className="text-chalk-dim">
+                      {targets.length > 0
+                        ? `covers ${targets.map((id) => roster[id]?.name || '—').join(', ')}`
+                        : 'not assigned yet — tap L above'}
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 p-2 -m-2">
+                    <input
+                      type="checkbox"
+                      checked={l.canServe}
+                      onChange={(e) => updateLibero(l.playerId, { canServe: e.target.checked })}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-chalk-dim">Allowed to serve (check your league's rule)</span>
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 p-2 -m-2">
-                  <input
-                    type="checkbox"
-                    checked={l.canServe}
-                    onChange={(e) => updateLibero(l.playerId, { canServe: e.target.checked })}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-chalk-dim">Allowed to serve (check your league's rule)</span>
-                </label>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
