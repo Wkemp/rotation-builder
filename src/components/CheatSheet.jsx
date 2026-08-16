@@ -20,7 +20,7 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 print:grid-cols-3 print:grid-rows-2 print:flex-1 print:gap-3">
         {[1, 2, 3, 4, 5, 6].map((rotationNum) => {
-          const court = resolveCourt(rotationNum, slots, liberos);
+          const court = resolveCourt(rotationNum, slots, liberos, substitutions);
           return (
             <div
               key={rotationNum}
@@ -40,14 +40,17 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
                     <div
                       key={zone}
                       className={`border rounded px-1 py-1 text-center print:py-3 print:rounded-lg ${
-                        zone === 1
-                          ? 'border-black font-semibold print:border-2'
-                          : 'border-gray-300'
+                        cell.isSub
+                          ? 'border-gray-500 bg-gray-100 print:border-2'
+                          : zone === 1
+                            ? 'border-black font-semibold print:border-2'
+                            : 'border-gray-300'
                       }`}
                     >
                       <div className="text-gray-400 print:text-xs">{zoneLabel(zone)}</div>
                       <div className="print:text-lg print:font-semibold">
                         {cell.isLibero ? 'L' : p.number || '–'}
+                        {cell.isSub && '*'}
                       </div>
                     </div>
                   );
@@ -63,6 +66,9 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
           <h3 className="font-display font-semibold text-sm mb-1.5 print:text-lg print:mb-2">
             Planned Substitutions
           </h3>
+          <p className="text-[10px] text-gray-500 mb-2 print:text-xs">
+            * in the grid above marks a zone where a planned substitute is shown instead of the starter.
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 print:grid-cols-3 print:gap-3 text-[11px] print:text-sm">
             {substitutions.map((s) => (
               <div

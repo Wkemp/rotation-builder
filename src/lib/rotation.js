@@ -57,7 +57,8 @@ export function zoneForSlot(rotationNum, slotNum) {
 
 /**
  * Resolve which roster player occupies each zone for a rotation, accounting
- * for liberos. `slots` is an array of 6 player ids (index 0 = S1 ... index 5 = S6).
+ * for liberos and planned (non-libero) substitutions.
+ * `slots` is an array of 6 player ids (index 0 = S1 ... index 5 = S6).
  * `liberos` is an array of { playerId, forPlayerId, canServe } (0-2 entries) —
  * `forPlayerId` is the roster player this libero swaps in/out for. Which slot
  * that resolves to is looked up fresh from `slots` every call, so if the
@@ -67,14 +68,32 @@ export function zoneForSlot(rotationNum, slotNum) {
  * steps off (the original player returns) once that slot rotates to a
  * front-row zone. If canServe is false and the slot lands on zone 1, the
  * original player is shown serving instead (libero sits that rotation out).
+ *
+ * `substitutions` is an array of { subPlayerId, forPlayerId, rotations }.
+ * A substitution is active for a rotation if `rotations` is empty (meaning
+ * "any rotation") or includes the current rotation number. A planned
+ * substitution takes priority over a libero swap for the same starter: it's
+ * a more specific, deliberately-scoped coaching decision for that exact
+ * rotation, and if a regular sub has taken a starter's spot, that starter
+ * isn't actually on the court for the libero to swap out from behind.
  */
-export function resolveCourt(rotationNum, slots, liberos = []) {
+export function resolveCourt(rotationNum, slots, liberos = [], substitutions = []) {
   const lineup = lineupForRotation(rotationNum);
   const result = {};
 
   const activeLiberos = liberos
     .filter((l) => l.forPlayerId)
     .map((l) => ({ ...l, forSlot: slots.indexOf(l.forPlayerId) + 1 || null }));
+
+  // Map starter playerId -> substitute playerId, for whichever planned
+  // substitutions apply to this specific rotation.
+  const activeSubByTarget = {};
+  for (const s of substitutions) {
+    const applies = !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
+    if (applies && s.forPlayerId && s.subPlayerId) {
+      activeSubByTarget[s.forPlayerId] = s.subPlayerId;
+    }
+  }
 
   for (const zone of ZONES) {
     const slotNum = lineup[zone];
@@ -83,19 +102,22 @@ export function resolveCourt(rotationNum, slots, liberos = []) {
 
     let occupantId = playerId;
     let isLibero = false;
+    let isSub = false;
 
-    if (libero && BACK_ROW_ZONES.includes(zone)) {
+    if (playerId && activeSubByTarget[playerId]) {
+      occupantId = activeSubByTarget[playerId];
+      isSub = true;
+    } else if (libero && BACK_ROW_ZONES.includes(zone)) {
       if (zone === 1 && !libero.canServe) {
         // libero sits out their own serve turn
         occupantId = playerId;
-        isLibero = false;
       } else {
         occupantId = libero.playerId;
         isLibero = true;
       }
     }
 
-    result[zone] = { slotNum, playerId: occupantId, isLibero, originalPlayerId: playerId };
+    result[zone] = { slotNum, playerId: occupantId, isLibero, isSub, originalPlayerId: playerId };
   }
 
   return result;

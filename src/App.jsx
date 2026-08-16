@@ -252,6 +252,7 @@ export default function App() {
                   rotationNum={current}
                   slots={activeSet.slots}
                   liberos={activeSet.liberos}
+                  substitutions={substitutions}
                   roster={activeRoster.players}
                   showZoneLabels={showZoneLabels}
                 />
