@@ -1,4 +1,14 @@
-import { resolveCourt, zoneForSlot, gridToFraction, formationKey, isFrontRow, ZONES, ZONE_POS } from '../lib/rotation';
+import {
+  resolveCourt,
+  zoneForSlot,
+  gridToFraction,
+  formationKey,
+  isFrontRow,
+  ZONES,
+  ZONE_POS,
+  GRID_COLS,
+  GRID_ROWS,
+} from '../lib/rotation';
 
 /** One small court diagram: net line, six positioned circles, and a caption
  * noting any libero/sub swaps active for this specific rotation. */
@@ -50,10 +60,16 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, roster, activeF
           return (
             <div
               key={slotNum}
-              className="absolute flex items-center justify-center rounded-full w-5 h-5 print:w-9 print:h-9 text-[9px] print:text-base font-data font-bold"
+              className="absolute flex items-center justify-center rounded-full text-[10px] print:text-lg font-data font-bold"
               style={{
                 left: `${pos.x * 100}%`,
                 top: `${pos.y * 100}%`,
+                // A puck fills exactly one cell of the 4x4 grid within its zone.
+                // Since the court is 3:2 and the grid is 12x8 (same 3:2 ratio),
+                // this works out to a true square regardless of the court's
+                // actual rendered size on screen or in print.
+                width: `${100 / GRID_COLS}%`,
+                height: `${100 / GRID_ROWS}%`,
                 transform: 'translate(-50%, -50%)',
                 border: special ? '2px dotted black' : '1.5px solid black',
                 background: filled ? '#000' : '#fff',
