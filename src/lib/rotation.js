@@ -32,6 +32,30 @@ export function zoneLabel(zone) {
 export const FRONT_ROW_ZONES = [4, 3, 2];
 export const BACK_ROW_ZONES = [5, 6, 1];
 
+// Formation grid: the whole court as a 12x8 grid, 4 columns x 4 rows within
+// each zone. Used for serve/receive formations - a coach can place a player
+// anywhere within their zone (or right at its edge, for realistic stacking)
+// rather than being pinned to the zone's exact center the way Base is.
+export const GRID_COLS = 12;
+export const GRID_ROWS = 8;
+
+/** Grid cell {col, row} -> fractional {x, y} (0-1) for rendering, centered in the cell. */
+export function gridToFraction({ col, row }) {
+  return { x: (col + 0.5) / GRID_COLS, y: (row + 0.5) / GRID_ROWS };
+}
+
+/** Fractional {x, y} (0-1), e.g. from a tap position -> the grid cell it falls in. */
+export function fractionToGrid(x, y) {
+  const col = Math.min(GRID_COLS - 1, Math.max(0, Math.floor(x * GRID_COLS)));
+  const row = Math.min(GRID_ROWS - 1, Math.max(0, Math.floor(y * GRID_ROWS)));
+  return { col, row };
+}
+
+/** Storage key for a rotation's formation - one for serving, one for receiving. */
+export function formationKey(rotationNum, serveState) {
+  return `${rotationNum}-${serveState}`;
+}
+
 // Steps "back" from the server (zone 1) for each zone, going backward
 // through the serving order.
 const STEPS_BACK = { 1: 0, 6: 1, 5: 2, 4: 3, 3: 4, 2: 5 };

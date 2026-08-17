@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Printer, Tag } from 'lucide-react';
+import { Printer, Tag, RotateCcw } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
@@ -9,6 +9,7 @@ import EntitySwitcher from './components/EntitySwitcher';
 import DataTransfer from './components/DataTransfer';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { createInitialAppData, createEmptyRoster, createEmptyRotationSet, nextDefaultName } from './lib/appData';
+import { formationKey } from './lib/rotation';
 import { makeId } from './lib/id';
 import { exportTeamFile, exportBackupFile, parseImportPayload, remapTeamIds } from './lib/fileTransfer';
 
@@ -18,11 +19,14 @@ export default function App() {
   const [startRotation, setStartRotation] = useLocalStorage('rb.startRotation', 1);
   const [current, setCurrent] = useState(1);
   const [view, setView] = useState('court'); // 'court' | 'cheatsheet' | 'serveorder'
+  const [serveState, setServeState] = useState('base'); // 'base' | 'serve' | 'receive'
+  const [editingFormation, setEditingFormation] = useState(false);
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
   // Older saved rotation sets (before this feature existed) won't have this field yet.
   const substitutions = activeSet.substitutions || [];
+  const formations = activeSet.formations || {};
 
   // --- Roster (team) level ---
 
@@ -131,6 +135,23 @@ export default function App() {
   const setSlots = (slots) => updateActiveRotationSet({ slots });
   const setLiberos = (liberos) => updateActiveRotationSet({ liberos });
   const setSubstitutions = (subs) => updateActiveRotationSet({ substitutions: subs });
+
+  // --- Serve/receive formations ---
+
+  function placeFormationPlayer(rotationNum, state, slotIndex, gridCell) {
+    const key = formationKey(rotationNum, state);
+    const existing = formations[key] || [null, null, null, null, null, null];
+    const next = [...existing];
+    next[slotIndex] = gridCell;
+    updateActiveRotationSet({ formations: { ...formations, [key]: next } });
+  }
+
+  function resetFormation(rotationNum, state) {
+    const key = formationKey(rotationNum, state);
+    const next = { ...formations };
+    delete next[key];
+    updateActiveRotationSet({ formations: next });
+  }
 
   // --- File export/import ---
 
@@ -257,6 +278,54 @@ export default function App() {
                   </button>
                 </div>
               </div>
+
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
+                <div className="flex items-center gap-1 bg-ink rounded-lg p-1">
+                  {[
+                    { key: 'base', label: 'Base' },
+                    { key: 'serve', label: 'Serving' },
+                    { key: 'receive', label: 'Receiving' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        setServeState(opt.key);
+                        if (opt.key === 'base') setEditingFormation(false);
+                      }}
+                      className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+                        serveState === opt.key ? 'bg-gold text-ink' : 'text-chalk-dim'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {serveState !== 'base' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => resetFormation(current, serveState)}
+                      disabled={!formations[formationKey(current, serveState)]}
+                      title="Reset this formation to Base positions"
+                      className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    >
+                      <RotateCcw size={14} />
+                      <span className="hidden sm:inline">Reset</span>
+                    </button>
+                    <button
+                      onClick={() => setEditingFormation(!editingFormation)}
+                      aria-pressed={editingFormation}
+                      className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                        editingFormation
+                          ? 'bg-gold text-ink border-gold'
+                          : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                      }`}
+                    >
+                      {editingFormation ? 'Done' : 'Edit'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="p-4">
                 <CourtDiagram
                   rotationNum={current}
@@ -265,6 +334,12 @@ export default function App() {
                   substitutions={substitutions}
                   roster={activeRoster.players}
                   showZoneLabels={showZoneLabels}
+                  serveState={serveState}
+                  formations={formations}
+                  editingFormation={editingFormation && serveState !== 'base'}
+                  onPlacePlayer={(slotIndex, gridCell) =>
+                    placeFormationPlayer(current, serveState, slotIndex, gridCell)
+                  }
                 />
               </div>
             </div>

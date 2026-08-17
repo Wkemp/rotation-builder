@@ -7,6 +7,11 @@ export function createEmptyRotationSet(name = 'Default') {
     slots: [null, null, null, null, null, null],
     liberos: [],
     substitutions: [],
+    // Serve/receive formations, keyed by "{rotationNum}-{serve|receive}".
+    // Each value is an array of 6 entries (index = slot 0-5, i.e. slot 1-6),
+    // either null (not customized - falls back to the Base zone-center
+    // position) or a { col, row } grid cell.
+    formations: {},
   };
 }
 
@@ -61,6 +66,7 @@ export function createInitialAppData() {
       slots: oldSlots || [null, null, null, null, null, null],
       liberos: oldLiberos || [],
       substitutions: [],
+      formations: {},
     };
     const roster = {
       id: makeId('team_'),

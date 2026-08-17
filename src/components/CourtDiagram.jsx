@@ -1,4 +1,15 @@
-import { zoneForSlot, resolveCourt, zoneLabel, isFrontRow } from '../lib/rotation';
+import { useState, useRef } from 'react';
+import {
+  zoneForSlot,
+  resolveCourt,
+  zoneLabel,
+  isFrontRow,
+  gridToFraction,
+  fractionToGrid,
+  formationKey,
+  GRID_COLS,
+  GRID_ROWS,
+} from '../lib/rotation';
 
 // Grid position (fraction of court width/height) for each zone's cell CENTER —
 // used to place player pucks.
@@ -14,9 +25,40 @@ const ZONE_CELL = {
   5: { col: 0, row: 1 }, 6: { col: 1, row: 1 }, 1: { col: 2, row: 1 },
 };
 
-export default function CourtDiagram({ rotationNum, slots, liberos, substitutions = [], roster, showZoneLabels }) {
+export default function CourtDiagram({
+  rotationNum,
+  slots,
+  liberos,
+  substitutions = [],
+  roster,
+  showZoneLabels,
+  serveState = 'base',
+  formations = {},
+  editingFormation = false,
+  onPlacePlayer,
+}) {
   const court = resolveCourt(rotationNum, slots, liberos, substitutions);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
+  const [pickedUpSlot, setPickedUpSlot] = useState(null);
+  const courtRef = useRef(null);
+
+  const activeFormation =
+    serveState !== 'base' ? formations[formationKey(rotationNum, serveState)] : null;
+
+  function handlePuckClick(slotNum) {
+    if (!editingFormation) return;
+    setPickedUpSlot((prev) => (prev === slotNum ? null : slotNum));
+  }
+
+  function handleCourtClick(e) {
+    if (!editingFormation || pickedUpSlot === null || !courtRef.current) return;
+    const rect = courtRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const cell = fractionToGrid(x, y);
+    onPlacePlayer?.(pickedUpSlot - 1, cell);
+    setPickedUpSlot(null);
+  }
 
   return (
     <div className="w-full select-none">
@@ -30,12 +72,37 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
           <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
         </div>
 
-        {/* court outline + grid */}
-        <div className="absolute inset-0 rounded-lg border-2 border-chalk/40 overflow-hidden bg-ink-raised z-0">
+        {/* court outline + grid - also the tap target for placing a picked-up player */}
+        <div
+          ref={courtRef}
+          onClick={handleCourtClick}
+          className={`absolute inset-0 rounded-lg border-2 border-chalk/40 overflow-hidden bg-ink-raised z-0 ${
+            editingFormation && pickedUpSlot !== null ? 'cursor-crosshair' : ''
+          }`}
+        >
           <div className="absolute left-0 right-0 top-1/2 h-px bg-chalk/20" />
           <div className="absolute top-0 bottom-0 left-1/2 w-px bg-chalk/20" />
           <div className="absolute top-0 bottom-0 left-1/3 w-px bg-chalk/10" />
           <div className="absolute top-0 bottom-0 left-2/3 w-px bg-chalk/10" />
+
+          {editingFormation && (
+            <div className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: GRID_COLS - 1 }).map((_, i) => (
+                <div
+                  key={`gc-${i}`}
+                  className="absolute top-0 bottom-0 w-px bg-gold/15"
+                  style={{ left: `${((i + 1) / GRID_COLS) * 100}%` }}
+                />
+              ))}
+              {Array.from({ length: GRID_ROWS - 1 }).map((_, i) => (
+                <div
+                  key={`gr-${i}`}
+                  className="absolute left-0 right-0 h-px bg-gold/15"
+                  style={{ top: `${((i + 1) / GRID_ROWS) * 100}%` }}
+                />
+              ))}
+            </div>
+          )}
 
           {showZoneLabels &&
             Object.entries(ZONE_CELL).map(([zone, { col, row }]) => (
@@ -55,15 +122,20 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
         {/* player pucks - keyed by slot so position transitions animate smoothly */}
         {[1, 2, 3, 4, 5, 6].map((slotNum) => {
           const zone = zoneForSlot(rotationNum, slotNum);
-          const pos = ZONE_POS[zone];
+          const customCell = activeFormation?.[slotNum - 1];
+          const pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
           const cell = court[zone];
           const isServing = zone === 1;
           const player = playerAt(cell.playerId);
+          const isPickedUp = pickedUpSlot === slotNum;
 
           return (
             <div
               key={`slot-${slotNum}`}
-              className="absolute flex flex-col items-center transition-all duration-700 ease-out z-10"
+              onClick={() => handlePuckClick(slotNum)}
+              className={`absolute flex flex-col items-center transition-all duration-700 ease-out z-10 ${
+                editingFormation ? 'cursor-pointer' : ''
+              }`}
               style={{
                 left: `${pos.x * 100}%`,
                 top: `${pos.y * 100}%`,
@@ -72,6 +144,8 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
             >
               <div
                 className={`relative flex items-center justify-center rounded-full w-12 h-12 sm:w-14 sm:h-14 font-display font-semibold text-lg sm:text-xl shadow-lg transition-colors duration-500 ${
+                  isPickedUp ? 'ring-4 ring-gold animate-pulse' : ''
+                } ${
                   cell.isSub
                     ? 'bg-sub text-chalk'
                     : cell.isLibero
@@ -93,6 +167,14 @@ export default function CourtDiagram({ rotationNum, slots, liberos, substitution
           );
         })}
       </div>
+
+      {editingFormation && (
+        <p className="mt-2 text-[11px] text-gold text-center">
+          {pickedUpSlot === null
+            ? 'Tap a player, then tap where they should stand.'
+            : 'Tap anywhere on the court to place them there.'}
+        </p>
+      )}
 
       {/* Libero + Bench share one row: substitutions on the left, libero pinned
           to the right end - no reason for either to cost its own line. */}
