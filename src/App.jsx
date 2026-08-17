@@ -253,7 +253,6 @@ export default function App() {
               onDuplicateRotationSet={duplicateRotationSet}
               onRenameRotationSet={renameRotationSet}
               onDeleteRotationSet={deleteRotationSet}
-              onShowServeOrder={() => setView('serveorder')}
             />
           </section>
 
@@ -277,6 +276,15 @@ export default function App() {
                     Zones
                   </button>
                 </div>
+              </div>
+
+              <div className="flex items-center px-4 py-2.5 border-b border-ink-line">
+                <RotationSelector
+                  current={current}
+                  startRotation={startRotation}
+                  onSelect={setCurrent}
+                  onSetStart={setStartRotation}
+                />
               </div>
 
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
@@ -343,13 +351,6 @@ export default function App() {
                 />
               </div>
             </div>
-
-            <RotationSelector
-              current={current}
-              startRotation={startRotation}
-              onSelect={setCurrent}
-              onSetStart={setStartRotation}
-            />
           </section>
         </main>
       ) : view === 'cheatsheet' ? (
@@ -365,6 +366,7 @@ export default function App() {
             slots={activeSet.slots}
             liberos={activeSet.liberos}
             substitutions={substitutions}
+            formations={formations}
             roster={activeRoster.players}
           />
         </main>

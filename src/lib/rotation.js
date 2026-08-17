@@ -15,6 +15,14 @@
 
 export const ZONES = [1, 2, 3, 4, 5, 6];
 
+// Grid position (fraction of court width/height) for each zone's cell CENTER.
+// Shared by the interactive court diagram and the printable mini-court
+// diagrams, so both agree on exactly where a zone's default position is.
+export const ZONE_POS = {
+  4: { x: 1 / 6, y: 1 / 4 }, 3: { x: 1 / 2, y: 1 / 4 }, 2: { x: 5 / 6, y: 1 / 4 },
+  5: { x: 1 / 6, y: 3 / 4 }, 6: { x: 1 / 2, y: 3 / 4 }, 1: { x: 5 / 6, y: 3 / 4 },
+};
+
 export const ZONE_LABELS = {
   1: 'RB', 2: 'RF', 3: 'MF', 4: 'LF', 5: 'LB', 6: 'MB',
 };

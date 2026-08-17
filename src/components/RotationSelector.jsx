@@ -12,33 +12,16 @@ export default function RotationSelector({ current, startRotation, onSelect, onS
   const order = orderedRotations(startRotation);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase">Rotation</h3>
-        <label className="flex items-center gap-1.5 text-xs text-chalk-dim">
-          Start at
-          <select
-            value={startRotation}
-            onChange={(e) => onSetStart(Number(e.target.value))}
-            className="bg-ink-raised border border-ink-line rounded px-2 py-2 text-base text-chalk font-data"
-          >
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                R{n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="grid grid-cols-6 gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1">
         {order.map((n) => (
           <button
             key={n}
             onClick={() => onSelect(n)}
-            className={`aspect-square min-h-11 rounded-lg font-display font-semibold text-lg transition-colors ${
+            className={`w-8 h-9 rounded text-sm font-display font-semibold transition-colors ${
               current === n
                 ? 'bg-gold text-ink'
-                : 'bg-ink-raised text-chalk-dim border border-ink-line hover:border-gold/50 hover:text-chalk'
+                : 'bg-ink text-chalk-dim border border-ink-line hover:border-gold/50 hover:text-chalk'
             }`}
             aria-pressed={current === n}
             aria-label={`Rotation ${n}`}
@@ -47,6 +30,18 @@ export default function RotationSelector({ current, startRotation, onSelect, onS
           </button>
         ))}
       </div>
+      <select
+        value={startRotation}
+        onChange={(e) => onSetStart(Number(e.target.value))}
+        title="Which rotation the buttons start counting from"
+        className="h-9 bg-ink border border-ink-line rounded px-1.5 text-chalk-dim font-data"
+      >
+        {[1, 2, 3, 4, 5, 6].map((n) => (
+          <option key={n} value={n}>
+            Start R{n}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

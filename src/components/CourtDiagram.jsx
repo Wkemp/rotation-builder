@@ -9,14 +9,11 @@ import {
   formationKey,
   GRID_COLS,
   GRID_ROWS,
+  ZONE_POS,
 } from '../lib/rotation';
 
 // Grid position (fraction of court width/height) for each zone's cell CENTER —
-// used to place player pucks.
-const ZONE_POS = {
-  4: { x: 1 / 6, y: 1 / 4 }, 3: { x: 1 / 2, y: 1 / 4 }, 2: { x: 5 / 6, y: 1 / 4 },
-  5: { x: 1 / 6, y: 3 / 4 }, 6: { x: 1 / 2, y: 3 / 4 }, 1: { x: 5 / 6, y: 3 / 4 },
-};
+// used to place player pucks. (imported from rotation.js)
 
 // Column/row for each zone's cell — used to place zone labels in a corner,
 // clear of the puck that sits in the center of the same cell.

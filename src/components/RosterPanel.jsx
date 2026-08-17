@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Users, Repeat, ListOrdered, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, Users, Repeat, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { makePlayerId, makeId } from '../lib/id';
 import { liberoTargets, liberoServesFor } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
@@ -13,6 +13,33 @@ const POSITION_NAMES = {
   L: 'Libero',
   DS: 'Defensive Specialist',
 };
+
+/** Section heading with an info button that reveals `children` (the
+ * explanation text) on click, instead of it always taking up space. */
+function SectionHeading({ icon, title, infoOpen, onToggleInfo, children }) {
+  return (
+    <div className="mb-2">
+      <div className="flex items-center justify-between gap-1.5">
+        <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase flex items-center gap-1.5">
+          {icon} {title}
+        </h3>
+        <button
+          onClick={onToggleInfo}
+          aria-pressed={infoOpen}
+          aria-label={`About ${title}`}
+          className="text-chalk-dim hover:text-gold transition-colors p-1.5 -m-1.5 flex-shrink-0"
+        >
+          <Info size={14} />
+        </button>
+      </div>
+      {infoOpen && (
+        <p className="text-[11px] text-chalk-dim mt-1.5 bg-ink-raised rounded px-2 py-1.5">
+          {children}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function RosterPanel({
   roster,
@@ -30,7 +57,6 @@ export default function RosterPanel({
   onDuplicateRotationSet,
   onRenameRotationSet,
   onDeleteRotationSet,
-  onShowServeOrder,
 }) {
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
@@ -39,6 +65,9 @@ export default function RosterPanel({
   const [newForPlayerId, setNewForPlayerId] = useState('');
   const [newSubRotations, setNewSubRotations] = useState([]);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
+  const [showLineupInfo, setShowLineupInfo] = useState(false);
+  const [showLiberoInfo, setShowLiberoInfo] = useState(false);
+  const [showSubsInfo, setShowSubsInfo] = useState(false);
 
   const players = Object.values(roster).sort((a, b) => (a.number || 0) - (b.number || 0));
   const liberoIds = new Set(liberos.map((l) => l.playerId));
@@ -287,9 +316,16 @@ export default function RosterPanel({
       </div>
 
       <div>
-        <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2">
-          Starting Lineup — Rotation 1
-        </h3>
+        <SectionHeading
+          title="Starting Lineup — Rotation 1"
+          infoOpen={showLineupInfo}
+          onToggleInfo={() => setShowLineupInfo(!showLineupInfo)}
+        >
+          This is where each player stands the instant Rotation 1 begins. Zone 1 serves first —
+          the same order then carries through every later rotation.
+          {liberos.length > 0 &&
+            ' Tap L to add or remove who a libero covers - they can cover more than one player, automatically swapping in for whichever is currently in the back row.'}
+        </SectionHeading>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5, 6].map((zone) => {
             const playerId = slots[zone - 1];
@@ -338,30 +374,19 @@ export default function RosterPanel({
             );
           })}
         </div>
-        <p className="text-[11px] text-chalk-dim mt-1.5">
-          This is where each player stands the instant Rotation 1 begins. Zone 1 serves first —
-          the same order then carries through every later rotation.
-          {liberos.length > 0 &&
-            ' Tap L to add or remove who a libero covers - they can cover more than one player, automatically swapping in for whichever is currently in the back row.'}
-        </p>
-        <button
-          onClick={onShowServeOrder}
-          className="mt-2 w-full h-10 flex items-center justify-center gap-1.5 bg-ink-raised border border-ink-line rounded-lg text-sm font-medium text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors"
-        >
-          <ListOrdered size={16} /> View Serve Order Sheet
-        </button>
       </div>
 
       {liberos.length > 0 && (
         <div>
-          <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2">
-            Libero Setup
-          </h3>
-          <p className="text-[11px] text-chalk-dim mb-2">
+          <SectionHeading
+            title="Libero Setup"
+            infoOpen={showLiberoInfo}
+            onToggleInfo={() => setShowLiberoInfo(!showLiberoInfo)}
+          >
             Covering a player and being allowed to serve for them are separate — a libero can
             cover several players defensively but usually only serves in place of one specific
             teammate, check your league's rule.
-          </p>
+          </SectionHeading>
           <div className="space-y-2">
             {liberos.map((l) => {
               const targets = liberoTargets(l);
@@ -403,14 +428,16 @@ export default function RosterPanel({
       )}
 
       <div>
-        <h3 className="font-display text-sm tracking-wide text-chalk-dim uppercase mb-2 flex items-center gap-1.5">
-          <Repeat size={14} /> Planned Substitutions
-        </h3>
-        <p className="text-[11px] text-chalk-dim mb-2">
+        <SectionHeading
+          icon={<Repeat size={14} />}
+          title="Planned Substitutions"
+          infoOpen={showSubsInfo}
+          onToggleInfo={() => setShowSubsInfo(!showSubsInfo)}
+        >
           Non-libero subs — for a bench player you plan to bring in for a starter, not the
           libero's automatic back-row swap above. Reference only: shown here and on the cheat
           sheet, not animated into the court view.
-        </p>
+        </SectionHeading>
 
         <div className="bg-ink-raised rounded-lg px-2.5 py-2 mb-2 space-y-2">
           <div className="flex items-center gap-2 text-xs">

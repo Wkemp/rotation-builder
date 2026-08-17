@@ -1,93 +1,177 @@
-import { resolveCourt, zoneLabel } from '../lib/rotation';
+import { resolveCourt, zoneForSlot, gridToFraction, formationKey, isFrontRow, ZONES, ZONE_POS } from '../lib/rotation';
 
-const LAYOUT_ZONES = [4, 3, 2, 5, 6, 1]; // front row then back row, left to right
-
-export default function CheatSheet({ teamName, slots, liberos, substitutions = [], roster }) {
+/** One small court diagram: net line, six positioned circles, and a caption
+ * noting any libero/sub swaps active for this specific rotation. */
+function MiniCourt({ rotationNum, slots, liberos, substitutions, roster, activeFormation }) {
+  const court = resolveCourt(rotationNum, slots, liberos, substitutions);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
+  const servingPlayer = playerAt(court[1].playerId);
+
+  const notes = [];
+  for (const zone of ZONES) {
+    const cell = court[zone];
+    if (cell.isLibero) {
+      notes.push(
+        `L #${playerAt(cell.playerId).number || '?'} in for #${playerAt(cell.originalPlayerId).number || '?'}`
+      );
+    } else if (cell.isSub) {
+      notes.push(
+        `Sub #${playerAt(cell.playerId).number || '?'} in for #${playerAt(cell.originalPlayerId).number || '?'}`
+      );
+    }
+  }
 
   return (
-    <div
-      className="printable bg-white text-black p-6 rounded-lg print:p-0 print:rounded-none print:h-screen print:flex print:flex-col"
-    >
-      <div className="flex items-baseline justify-between mb-4 border-b-2 border-black pb-2 print:mb-3 print:pb-2 print:shrink-0">
-        <h2 className="font-display text-2xl font-semibold print:text-3xl">
-          {teamName || 'Rotation'} Cheat Sheet
-        </h2>
-        <span className="text-xs text-gray-500 print:text-sm">
-          Verify against your league's official rules
-        </span>
+    <div className="border-2 border-gray-400 rounded-md p-2 print:p-3 flex flex-col print:break-inside-avoid">
+      <div className="flex items-center justify-between mb-1.5 print:mb-2">
+        <span className="font-display font-semibold text-sm print:text-lg">Rotation {rotationNum}</span>
+        <span className="text-[10px] text-gray-500 print:text-sm">Serving #{servingPlayer.number || '–'}</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 print:grid-cols-3 print:grid-rows-2 print:flex-1 print:gap-3">
-        {[1, 2, 3, 4, 5, 6].map((rotationNum) => {
-          const court = resolveCourt(rotationNum, slots, liberos, substitutions);
+      <div className="relative w-full aspect-[3/2] border border-black rounded">
+        {/* net: a bold line is enough at this size */}
+        <div className="absolute -top-1 left-0 right-0 h-[3px] bg-black rounded-full" />
+        {/* thin zone guide lines */}
+        <div className="absolute left-0 right-0 top-1/2 h-px bg-gray-300" />
+        <div className="absolute top-0 bottom-0 left-1/3 w-px bg-gray-200" />
+        <div className="absolute top-0 bottom-0 left-2/3 w-px bg-gray-200" />
+
+        {[1, 2, 3, 4, 5, 6].map((slotNum) => {
+          const zone = zoneForSlot(rotationNum, slotNum);
+          const customCell = activeFormation?.[slotNum - 1];
+          const pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
+          const cell = court[zone];
+          const player = playerAt(cell.playerId);
+          // Libero and subs share one "not the normal starter" treatment
+          // (dotted border) - the caption below spells out which is which,
+          // rather than trying to encode two special states visually.
+          const special = cell.isLibero || cell.isSub;
+          const filled = !special && isFrontRow(zone);
+
           return (
             <div
-              key={rotationNum}
-              className="border border-gray-300 rounded p-2 print:border-2 print:border-gray-400 print:rounded-md print:p-4 print:flex print:flex-col print:break-inside-avoid"
+              key={slotNum}
+              className="absolute flex items-center justify-center rounded-full w-5 h-5 print:w-9 print:h-9 text-[9px] print:text-base font-data font-bold"
+              style={{
+                left: `${pos.x * 100}%`,
+                top: `${pos.y * 100}%`,
+                transform: 'translate(-50%, -50%)',
+                border: special ? '2px dotted black' : '1.5px solid black',
+                background: filled ? '#000' : '#fff',
+                color: filled ? '#fff' : '#000',
+              }}
             >
-              <div className="font-display font-semibold text-sm mb-1.5 flex items-center justify-between print:text-xl print:mb-3">
-                <span>Rotation {rotationNum}</span>
-                <span className="text-[10px] text-gray-500 print:text-sm">
-                  Serving: {playerAt(court[1].playerId).number || '–'}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 text-[10px] font-data print:gap-2 print:text-base print:flex-1">
-                {LAYOUT_ZONES.map((zone) => {
-                  const cell = court[zone];
-                  const p = playerAt(cell.playerId);
-                  return (
-                    <div
-                      key={zone}
-                      className={`border rounded px-1 py-1 text-center print:py-3 print:rounded-lg ${
-                        cell.isSub
-                          ? 'border-gray-500 bg-gray-100 print:border-2'
-                          : zone === 1
-                            ? 'border-black font-semibold print:border-2'
-                            : 'border-gray-300'
-                      }`}
-                    >
-                      <div className="text-gray-400 print:text-xs">{zoneLabel(zone)}</div>
-                      <div className="print:text-lg print:font-semibold">
-                        {cell.isLibero ? 'L' : p.number || '–'}
-                        {cell.isSub && '*'}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {player.number || '–'}
             </div>
           );
         })}
       </div>
-
-      {substitutions.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-gray-300 print:mt-3 print:pt-3 print:shrink-0">
-          <h3 className="font-display font-semibold text-sm mb-1.5 print:text-lg print:mb-2">
-            Planned Substitutions
-          </h3>
-          <p className="text-[10px] text-gray-500 mb-2 print:text-xs">
-            * in the grid above marks a zone where a planned substitute is shown instead of the starter.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 print:grid-cols-3 print:gap-3 text-[11px] print:text-sm">
-            {substitutions.map((s) => (
-              <div
-                key={s.id}
-                className="border border-gray-300 rounded px-2 py-1.5 print:border-2 print:border-gray-400 print:rounded-md print:px-3 print:py-2"
-              >
-                <div className="font-medium">
-                  {playerAt(s.subPlayerId).name || '—'}{' '}
-                  <span className="font-normal text-gray-500">in for</span>{' '}
-                  {playerAt(s.forPlayerId).name || '—'}
-                </div>
-                <div className="text-gray-500 print:text-gray-600">
-                  {s.rotations && s.rotations.length > 0
-                    ? `Rotation${s.rotations.length > 1 ? 's' : ''} ${s.rotations.join(', ')}`
-                    : 'Any rotation'}
-                </div>
-              </div>
-            ))}
-          </div>
+      {notes.length > 0 && (
+        <div className="mt-1.5 print:mt-2 text-[8px] print:text-[11px] text-gray-600 leading-tight">
+          {notes.join(' · ')}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** One printable page: header, a 3x2 grid of MiniCourts, optional footer content. */
+function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liberos, substitutions, roster, footer }) {
+  return (
+    <div
+      className={`p-6 print:p-0 print:min-h-screen print:flex print:flex-col ${
+        isFirstPage ? '' : 'mt-8 print:mt-0 print:break-before-page'
+      }`}
+    >
+      <div className="flex items-baseline justify-between mb-4 border-b-2 border-black pb-2 print:mb-3 print:pb-2 print:shrink-0">
+        <h2 className="font-display text-2xl font-semibold print:text-3xl">{title}</h2>
+        <span className="text-xs text-gray-500 print:text-sm">{subtitle}</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 print:grid-cols-3 print:grid-rows-2 print:flex-1 print:gap-3">
+        {[1, 2, 3, 4, 5, 6].map((rotationNum) => (
+          <MiniCourt
+            key={rotationNum}
+            rotationNum={rotationNum}
+            slots={slots}
+            liberos={liberos}
+            substitutions={substitutions}
+            roster={roster}
+            activeFormation={getFormation ? getFormation(rotationNum) : null}
+          />
+        ))}
+      </div>
+      {footer}
+    </div>
+  );
+}
+
+export default function CheatSheet({ teamName, slots, liberos, substitutions = [], formations = {}, roster }) {
+  const playerAt = (id) => roster[id] || { name: '—', number: '' };
+  const hasServeFormations = Object.keys(formations).some((k) => k.endsWith('-serve'));
+  const hasReceiveFormations = Object.keys(formations).some((k) => k.endsWith('-receive'));
+
+  const substitutionsFooter = substitutions.length > 0 && (
+    <div className="mt-4 pt-3 border-t border-gray-300 print:mt-3 print:pt-3 print:shrink-0">
+      <h3 className="font-display font-semibold text-sm mb-1.5 print:text-lg print:mb-2">
+        Planned Substitutions
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 print:grid-cols-3 print:gap-3 text-[11px] print:text-sm">
+        {substitutions.map((s) => (
+          <div
+            key={s.id}
+            className="border border-gray-300 rounded px-2 py-1.5 print:border-2 print:border-gray-400 print:rounded-md print:px-3 print:py-2"
+          >
+            <div className="font-medium">
+              {playerAt(s.subPlayerId).name || '—'}{' '}
+              <span className="font-normal text-gray-500">in for</span>{' '}
+              {playerAt(s.forPlayerId).name || '—'}
+            </div>
+            <div className="text-gray-500 print:text-gray-600">
+              {s.rotations && s.rotations.length > 0
+                ? `Rotation${s.rotations.length > 1 ? 's' : ''} ${s.rotations.join(', ')}`
+                : 'Any rotation'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="printable bg-white text-black rounded-lg print:rounded-none">
+      <RotationPage
+        title={`${teamName || 'Rotation'} Cheat Sheet — Base`}
+        subtitle="Verify against your league's official rules"
+        isFirstPage
+        getFormation={null}
+        slots={slots}
+        liberos={liberos}
+        substitutions={substitutions}
+        roster={roster}
+        footer={substitutionsFooter}
+      />
+
+      {hasServeFormations && (
+        <RotationPage
+          title={`${teamName || 'Rotation'} — Serving`}
+          subtitle="Custom rotations shown; others fall back to Base"
+          getFormation={(r) => formations[formationKey(r, 'serve')]}
+          slots={slots}
+          liberos={liberos}
+          substitutions={substitutions}
+          roster={roster}
+        />
+      )}
+
+      {hasReceiveFormations && (
+        <RotationPage
+          title={`${teamName || 'Rotation'} — Receiving`}
+          subtitle="Custom rotations shown; others fall back to Base"
+          getFormation={(r) => formations[formationKey(r, 'receive')]}
+          slots={slots}
+          liberos={liberos}
+          substitutions={substitutions}
+          roster={roster}
+        />
       )}
     </div>
   );
