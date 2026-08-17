@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Printer, Tag, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Printer, Tag, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
@@ -21,6 +21,23 @@ export default function App() {
   const [view, setView] = useState('court'); // 'court' | 'cheatsheet' | 'serveorder'
   const [serveState, setServeState] = useState('base'); // 'base' | 'serve' | 'receive'
   const [editingFormation, setEditingFormation] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // While full screen: lock body scroll, and let Escape exit it - both
+  // standard expectations for a "full screen" mode.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
@@ -257,12 +274,30 @@ export default function App() {
           </section>
 
           <section className="max-w-4xl mx-auto panels:flex-[1_1_56rem] panels:max-w-4xl panels:mx-0">
-            <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
+            <div
+              className={
+                isFullscreen
+                  ? 'fixed inset-0 z-50 bg-ink overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]'
+                  : 'bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5'
+              }
+            >
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
                 <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
                   Court
                 </span>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                    aria-pressed={isFullscreen}
+                    title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+                    className={`flex items-center justify-center w-11 h-11 rounded-full border transition-colors ${
+                      isFullscreen
+                        ? 'bg-gold text-ink border-gold'
+                        : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                    }`}
+                  >
+                    {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
                   <button
                     onClick={() => setShowZoneLabels(!showZoneLabels)}
                     aria-pressed={showZoneLabels}
