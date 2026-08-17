@@ -18,7 +18,7 @@ export default function RotationSelector({ current, startRotation, onSelect, onS
           <button
             key={n}
             onClick={() => onSelect(n)}
-            className={`w-8 h-9 rounded text-sm font-display font-semibold transition-colors ${
+            className={`w-9 h-9 flex-shrink-0 rounded text-sm font-display font-semibold transition-colors ${
               current === n
                 ? 'bg-gold text-ink'
                 : 'bg-ink text-chalk-dim border border-ink-line hover:border-gold/50 hover:text-chalk'
@@ -30,18 +30,20 @@ export default function RotationSelector({ current, startRotation, onSelect, onS
           </button>
         ))}
       </div>
-      <select
-        value={startRotation}
-        onChange={(e) => onSetStart(Number(e.target.value))}
-        title="Which rotation the buttons start counting from"
-        className="h-9 bg-ink border border-ink-line rounded px-1.5 text-chalk-dim font-data"
-      >
-        {[1, 2, 3, 4, 5, 6].map((n) => (
-          <option key={n} value={n}>
-            Start R{n}
-          </option>
-        ))}
-      </select>
+      <label className="flex items-center gap-1.5 text-xs text-chalk-dim flex-shrink-0">
+        Start at:
+        <select
+          value={startRotation}
+          onChange={(e) => onSetStart(Number(e.target.value))}
+          className="h-9 bg-ink border border-ink-line rounded px-1.5 text-chalk-dim font-data"
+        >
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <option key={n} value={n}>
+              R{n}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

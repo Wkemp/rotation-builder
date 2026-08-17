@@ -278,16 +278,13 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center px-4 py-2.5 border-b border-ink-line">
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line flex-wrap">
                 <RotationSelector
                   current={current}
                   startRotation={startRotation}
                   onSelect={setCurrent}
                   onSetStart={setStartRotation}
                 />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
                 <div className="flex items-center gap-1 bg-ink rounded-lg p-1">
                   {[
                     { key: 'base', label: 'Base' },
@@ -308,31 +305,32 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                {serveState !== 'base' && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => resetFormation(current, serveState)}
-                      disabled={!formations[formationKey(current, serveState)]}
-                      title="Reset this formation to Base positions"
-                      className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                      <RotateCcw size={14} />
-                      <span className="hidden sm:inline">Reset</span>
-                    </button>
-                    <button
-                      onClick={() => setEditingFormation(!editingFormation)}
-                      aria-pressed={editingFormation}
-                      className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
-                        editingFormation
-                          ? 'bg-gold text-ink border-gold'
-                          : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                      }`}
-                    >
-                      {editingFormation ? 'Done' : 'Edit'}
-                    </button>
-                  </div>
-                )}
               </div>
+
+              {serveState !== 'base' && (
+                <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-b border-ink-line">
+                  <button
+                    onClick={() => resetFormation(current, serveState)}
+                    disabled={!formations[formationKey(current, serveState)]}
+                    title="Reset this formation to Base positions"
+                    className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <RotateCcw size={14} />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                  <button
+                    onClick={() => setEditingFormation(!editingFormation)}
+                    aria-pressed={editingFormation}
+                    className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                      editingFormation
+                        ? 'bg-gold text-ink border-gold'
+                        : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                    }`}
+                  >
+                    {editingFormation ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+              )}
 
               <div className="p-4">
                 <CourtDiagram

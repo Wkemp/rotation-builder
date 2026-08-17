@@ -27,9 +27,9 @@ function SectionHeading({ icon, title, infoOpen, onToggleInfo, children }) {
           onClick={onToggleInfo}
           aria-pressed={infoOpen}
           aria-label={`About ${title}`}
-          className="text-chalk-dim hover:text-gold transition-colors p-1.5 -m-1.5 flex-shrink-0"
+          className="flex items-center justify-center w-9 h-9 rounded text-chalk-dim hover:text-gold hover:bg-ink-raised transition-colors flex-shrink-0"
         >
-          <Info size={14} />
+          <Info size={15} />
         </button>
       </div>
       {infoOpen && (
