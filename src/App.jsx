@@ -236,7 +236,7 @@ export default function App() {
 
       {view === 'court' ? (
         <main className="max-w-[88rem] mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
-          <section className="max-w-md mx-auto panels:w-[28rem] panels:mx-0 panels:flex-shrink-0 space-y-5 mb-6 panels:mb-0">
+          <section className="max-w-md mx-auto panels:flex-[0_1_28rem] panels:max-w-md panels:mx-0 space-y-5 mb-6 panels:mb-0">
             <RosterPanel
               roster={activeRoster.players}
               setRoster={setPlayers}
@@ -256,7 +256,7 @@ export default function App() {
             />
           </section>
 
-          <section className="max-w-4xl mx-auto panels:w-[56rem] panels:mx-0 panels:flex-shrink-0">
+          <section className="max-w-4xl mx-auto panels:flex-[1_1_56rem] panels:max-w-4xl panels:mx-0">
             <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
                 <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">

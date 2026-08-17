@@ -25,11 +25,13 @@
   --font-data: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Custom breakpoint for the court/roster layout, not a generic screen-size
-     tier. It's the point where court section (max-w-4xl, 56rem) + roster
-     section (max-w-md, 28rem) + the gap between them (1.5rem) + outer
-     padding (2rem) can actually fit side-by-side without cramping either
-     one: 56 + 28 + 1.5 + 2 = 87.5rem, rounded up to 88rem for breathing room. */
-  --breakpoint-panels: 88rem;
+     tier. Set to 64rem (1024px) - the landscape width of even the smallest
+     current iPad (iPad Mini), which is the primary device this app targets.
+     Below this, side-by-side genuinely doesn't fit comfortably; at and
+     above it, the two sections switch from stacked to a flexible row (see
+     App.jsx) that shrinks to fit an iPad and grows up to court's 56rem /
+     roster's 28rem caps on larger screens. */
+  --breakpoint-panels: 64rem;
 }
 
 html, body, #root {
