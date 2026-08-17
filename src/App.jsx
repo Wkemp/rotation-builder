@@ -367,7 +367,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="p-4">
+              <div className={isFullscreen ? 'p-4 sm:p-8' : 'p-4'}>
                 <CourtDiagram
                   rotationNum={current}
                   slots={activeSet.slots}
@@ -381,6 +381,7 @@ export default function App() {
                   onPlacePlayer={(slotIndex, gridCell) =>
                     placeFormationPlayer(current, serveState, slotIndex, gridCell)
                   }
+                  isFullscreen={isFullscreen}
                 />
               </div>
             </div>

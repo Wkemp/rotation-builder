@@ -12,9 +12,6 @@ import {
   ZONE_POS,
 } from '../lib/rotation';
 
-// Grid position (fraction of court width/height) for each zone's cell CENTER —
-// used to place player pucks. (imported from rotation.js)
-
 // Column/row for each zone's cell — used to place zone labels in a corner,
 // clear of the puck that sits in the center of the same cell.
 const ZONE_CELL = {
@@ -33,6 +30,7 @@ export default function CourtDiagram({
   formations = {},
   editingFormation = false,
   onPlacePlayer,
+  isFullscreen = false,
 }) {
   const court = resolveCourt(rotationNum, slots, liberos, substitutions);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
@@ -41,6 +39,25 @@ export default function CourtDiagram({
 
   const activeFormation =
     serveState !== 'base' ? formations[formationKey(rotationNum, serveState)] : null;
+
+  // Position (left/top) is already percentage-based, so it scales with the
+  // court box automatically. Size and text are normally fixed pixel values
+  // though, so without this they'd stay small even as the court grows a lot
+  // in full screen. These pick a bigger set of sizes for that case.
+  const puckSize = isFullscreen
+    ? 'w-20 h-20 sm:w-24 sm:h-24 text-2xl sm:text-3xl'
+    : 'w-12 h-12 sm:w-14 sm:h-14 text-lg sm:text-xl';
+  const servingDot = isFullscreen ? 'w-6 h-6 -top-2 -right-2' : 'w-4 h-4 -top-1.5 -right-1.5';
+  const nameLabel = isFullscreen ? 'text-sm sm:text-base mt-1.5' : 'text-[11px] sm:text-xs mt-1';
+  const nameLabelWidth = isFullscreen ? 'max-w-[7rem]' : 'max-w-[4.5rem]';
+  const zoneLabelSize = isFullscreen
+    ? 'text-base sm:text-lg px-2 py-1'
+    : 'text-xs sm:text-sm px-1.5 py-0.5';
+  const hintText = isFullscreen ? 'text-base' : 'text-[11px]';
+  const benchChip = isFullscreen ? 'w-14 h-14 text-lg' : 'w-9 h-9 text-sm';
+  const benchCaption = isFullscreen ? 'text-sm mt-1.5' : 'text-[10px] mt-1';
+  const benchCaptionWidth = isFullscreen ? 'max-w-[7rem]' : 'max-w-[4.5rem]';
+  const sectionLabel = isFullscreen ? 'text-sm' : 'text-[10px]';
 
   function handlePuckClick(slotNum) {
     if (!editingFormation) return;
@@ -105,7 +122,7 @@ export default function CourtDiagram({
             Object.entries(ZONE_CELL).map(([zone, { col, row }]) => (
               <div
                 key={`label-${zone}`}
-                className="absolute font-data text-xs sm:text-sm font-medium tracking-wide text-chalk-dim/90 bg-ink-raised/90 px-1.5 py-0.5 rounded pointer-events-none"
+                className={`absolute font-data font-medium tracking-wide text-chalk-dim/90 bg-ink-raised/90 rounded pointer-events-none ${zoneLabelSize}`}
                 style={{
                   left: `calc(${(col / 3) * 100}% + 6px)`,
                   top: `calc(${(row / 2) * 100}% + 6px)`,
@@ -140,7 +157,7 @@ export default function CourtDiagram({
               }}
             >
               <div
-                className={`relative flex items-center justify-center rounded-full w-12 h-12 sm:w-14 sm:h-14 font-display font-semibold text-lg sm:text-xl shadow-lg transition-colors duration-500 ${
+                className={`relative flex items-center justify-center rounded-full font-display font-semibold shadow-lg transition-colors duration-500 ${puckSize} ${
                   isPickedUp ? 'ring-4 ring-gold animate-pulse' : ''
                 } ${
                   cell.isSub
@@ -154,10 +171,14 @@ export default function CourtDiagram({
               >
                 {cell.isLibero ? 'L' : player.number || slotNum}
                 {isServing && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-serve border-2 border-ink" />
+                  <span
+                    className={`absolute rounded-full bg-serve border-2 border-ink ${servingDot}`}
+                  />
                 )}
               </div>
-              <span className="mt-1 text-[11px] sm:text-xs font-medium text-chalk-dim max-w-[4.5rem] truncate text-center">
+              <span
+                className={`font-medium text-chalk-dim truncate text-center ${nameLabel} ${nameLabelWidth}`}
+              >
                 {player.name || '—'}
               </span>
             </div>
@@ -166,7 +187,7 @@ export default function CourtDiagram({
       </div>
 
       {editingFormation && (
-        <p className="mt-2 text-[11px] text-gold text-center">
+        <p className={`mt-2 text-gold text-center ${hintText}`}>
           {pickedUpSlot === null
             ? 'Tap a player, then tap where they should stand.'
             : 'Tap anywhere on the court to place them there.'}
@@ -179,7 +200,9 @@ export default function CourtDiagram({
         <div className="mt-4 pt-3 border-t border-ink-line flex items-start gap-4">
           {substitutions.length > 0 && (
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2">
+              <div
+                className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 ${sectionLabel}`}
+              >
                 Bench
               </div>
               <div className="flex flex-wrap gap-3">
@@ -195,7 +218,7 @@ export default function CourtDiagram({
                       style={{ opacity: isActive ? 1 : 0.4 }}
                     >
                       <div
-                        className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
+                        className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
                           isActive
                             ? 'bg-sub text-chalk border-sub'
                             : 'bg-ink text-chalk-dim border-ink-line'
@@ -203,7 +226,9 @@ export default function CourtDiagram({
                       >
                         {subPlayer.number || '?'}
                       </div>
-                      <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
+                      <span
+                        className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
+                      >
                         {isActive ? 'in for' : 'for'} {forPlayer.name || '—'}
                       </span>
                     </div>
@@ -215,7 +240,9 @@ export default function CourtDiagram({
 
           {liberos.length > 0 && (
             <div className="flex-shrink-0 ml-auto">
-              <div className="text-[10px] uppercase tracking-widest text-chalk-dim/70 font-display mb-2 text-right">
+              <div
+                className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 text-right ${sectionLabel}`}
+              >
                 Libero
               </div>
               <div className="flex flex-wrap justify-end gap-3">
@@ -233,7 +260,7 @@ export default function CourtDiagram({
                       style={{ opacity: isActive ? 1 : 0.4 }}
                     >
                       <div
-                        className={`flex items-center justify-center rounded-full w-9 h-9 font-display font-semibold text-sm border-2 transition-colors duration-500 ${
+                        className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
                           isActive
                             ? 'bg-court-line text-chalk border-court-line'
                             : 'bg-ink text-chalk-dim border-ink-line'
@@ -241,7 +268,9 @@ export default function CourtDiagram({
                       >
                         {liberoPlayer.number || 'L'}
                       </div>
-                      <span className="mt-1 text-[10px] text-chalk-dim text-center max-w-[4.5rem] truncate">
+                      <span
+                        className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
+                      >
                         {isActive ? `for ${coveringName}` : 'on bench'}
                       </span>
                     </div>
