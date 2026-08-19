@@ -92,28 +92,6 @@ export default function CourtDiagram({
           <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
         </div>
 
-        {/* prev/next rotation - vertically centered on the court's exact edges,
-            which geometrically never overlap a puck (pucks sit at 1/6 and 5/6
-            of the width, 1/4 and 3/4 of the height - the edges stay clear) */}
-        {onPrevRotation && (
-          <button
-            onClick={onPrevRotation}
-            aria-label="Previous rotation"
-            className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full bg-ink/70 backdrop-blur-sm border border-chalk/20 text-chalk hover:bg-ink/90 hover:border-gold/50 transition-colors ${navButtonSize}`}
-          >
-            <ChevronLeft size={navIconSize} />
-          </button>
-        )}
-        {onNextRotation && (
-          <button
-            onClick={onNextRotation}
-            aria-label="Next rotation"
-            className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full bg-ink/70 backdrop-blur-sm border border-chalk/20 text-chalk hover:bg-ink/90 hover:border-gold/50 transition-colors ${navButtonSize}`}
-          >
-            <ChevronRight size={navIconSize} />
-          </button>
-        )}
-
         {/* court outline + grid - also the tap target for placing a picked-up player */}
         <div
           ref={courtRef}
@@ -213,6 +191,35 @@ export default function CourtDiagram({
           );
         })}
       </div>
+
+      {/* prev/next rotation - a dedicated row below the diagram, not overlaid
+          on it, so it can't collide with zone labels or pucks no matter
+          what's toggled on */}
+      {(onPrevRotation || onNextRotation) && (
+        <div className="flex items-center justify-center gap-3 mt-3">
+          {onPrevRotation && (
+            <button
+              onClick={onPrevRotation}
+              aria-label="Previous rotation"
+              className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
+            >
+              <ChevronLeft size={navIconSize} />
+            </button>
+          )}
+          <span className={`font-display font-semibold text-chalk-dim ${isFullscreen ? 'text-lg' : 'text-sm'}`}>
+            Rotation {rotationNum}
+          </span>
+          {onNextRotation && (
+            <button
+              onClick={onNextRotation}
+              aria-label="Next rotation"
+              className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
+            >
+              <ChevronRight size={navIconSize} />
+            </button>
+          )}
+        </div>
+      )}
 
       {editingFormation && (
         <p className={`mt-2 text-gold text-center ${hintText}`}>
