@@ -161,8 +161,13 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
 
   // For each libero, resolve which single target (if any) they're actively
   // covering this rotation, keyed by the zone that target currently occupies.
+  // Only one libero may ever be on court at once (true under every current
+  // ruleset, and explicit NFHS rule as of the 2026-27 season for teams using
+  // two designated liberos) - so liberos are checked in order, and once one
+  // is active for this rotation, no other libero gets to activate too.
   const activeLiberoByZone = {};
   for (const libero of liberos) {
+    if (Object.keys(activeLiberoByZone).length > 0) break;
     const servesFor = liberoServesFor(libero);
     for (const targetId of liberoTargets(libero)) {
       const slotIdx = slots.indexOf(targetId);
