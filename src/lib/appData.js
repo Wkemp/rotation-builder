@@ -7,6 +7,11 @@ export function createEmptyRotationSet(name = 'Default') {
     slots: [null, null, null, null, null, null],
     liberos: [],
     substitutions: [],
+    // Which one player (starter's own id, or one of their subs) is
+    // authorized to serve for a given starter's substitution group.
+    // Keyed by starter playerId; absent = the starter still holds serving
+    // rights (nobody's taken them over).
+    substitutionServers: {},
     // Serve/receive formations, keyed by "{rotationNum}-{serve|receive}".
     // Each value is an array of 6 entries (index = slot 0-5, i.e. slot 1-6),
     // either null (not customized - falls back to the Base zone-center
@@ -66,6 +71,7 @@ export function createInitialAppData() {
       slots: oldSlots || [null, null, null, null, null, null],
       liberos: oldLiberos || [],
       substitutions: [],
+      substitutionServers: {},
       formations: {},
     };
     const roster = {

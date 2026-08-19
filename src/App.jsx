@@ -43,6 +43,7 @@ export default function App() {
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
   // Older saved rotation sets (before this feature existed) won't have this field yet.
   const substitutions = activeSet.substitutions || [];
+  const substitutionServers = activeSet.substitutionServers || {};
   const formations = activeSet.formations || {};
 
   // --- Roster (team) level ---
@@ -152,6 +153,7 @@ export default function App() {
   const setSlots = (slots) => updateActiveRotationSet({ slots });
   const setLiberos = (liberos) => updateActiveRotationSet({ liberos });
   const setSubstitutions = (subs) => updateActiveRotationSet({ substitutions: subs });
+  const setSubstitutionServers = (servers) => updateActiveRotationSet({ substitutionServers: servers });
 
   // --- Serve/receive formations ---
 
@@ -263,6 +265,8 @@ export default function App() {
               setLiberos={setLiberos}
               substitutions={substitutions}
               setSubstitutions={setSubstitutions}
+              substitutionServers={substitutionServers}
+              setSubstitutionServers={setSubstitutionServers}
               rotationSets={activeRoster.rotationSets}
               activeRotationSetId={activeRoster.activeRotationSetId}
               onSwitchRotationSet={switchRotationSet}
@@ -373,6 +377,7 @@ export default function App() {
                   slots={activeSet.slots}
                   liberos={activeSet.liberos}
                   substitutions={substitutions}
+                  substitutionServers={substitutionServers}
                   roster={activeRoster.players}
                   showZoneLabels={showZoneLabels}
                   serveState={serveState}
@@ -382,6 +387,8 @@ export default function App() {
                     placeFormationPlayer(current, serveState, slotIndex, gridCell)
                   }
                   isFullscreen={isFullscreen}
+                  onPrevRotation={() => setCurrent(current === 1 ? 6 : current - 1)}
+                  onNextRotation={() => setCurrent(current === 6 ? 1 : current + 1)}
                 />
               </div>
             </div>
@@ -400,6 +407,7 @@ export default function App() {
             slots={activeSet.slots}
             liberos={activeSet.liberos}
             substitutions={substitutions}
+            substitutionServers={substitutionServers}
             formations={formations}
             roster={activeRoster.players}
           />

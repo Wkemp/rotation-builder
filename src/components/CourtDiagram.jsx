@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   zoneForSlot,
   resolveCourt,
@@ -24,6 +25,7 @@ export default function CourtDiagram({
   slots,
   liberos,
   substitutions = [],
+  substitutionServers = {},
   roster,
   showZoneLabels,
   serveState = 'base',
@@ -31,8 +33,10 @@ export default function CourtDiagram({
   editingFormation = false,
   onPlacePlayer,
   isFullscreen = false,
+  onPrevRotation,
+  onNextRotation,
 }) {
-  const court = resolveCourt(rotationNum, slots, liberos, substitutions);
+  const court = resolveCourt(rotationNum, slots, liberos, substitutions, substitutionServers);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const [pickedUpSlot, setPickedUpSlot] = useState(null);
   const courtRef = useRef(null);
@@ -58,6 +62,8 @@ export default function CourtDiagram({
   const benchCaption = isFullscreen ? 'text-sm mt-1.5' : 'text-[10px] mt-1';
   const benchCaptionWidth = isFullscreen ? 'max-w-[7rem]' : 'max-w-[4.5rem]';
   const sectionLabel = isFullscreen ? 'text-sm' : 'text-[10px]';
+  const navButtonSize = isFullscreen ? 'w-14 h-14' : 'w-11 h-11';
+  const navIconSize = isFullscreen ? 24 : 18;
 
   function handlePuckClick(slotNum) {
     if (!editingFormation) return;
@@ -85,6 +91,28 @@ export default function CourtDiagram({
           <div className="absolute top-0.5 left-0 right-0 h-1.5 bg-chalk rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)]" />
           <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
         </div>
+
+        {/* prev/next rotation - vertically centered on the court's exact edges,
+            which geometrically never overlap a puck (pucks sit at 1/6 and 5/6
+            of the width, 1/4 and 3/4 of the height - the edges stay clear) */}
+        {onPrevRotation && (
+          <button
+            onClick={onPrevRotation}
+            aria-label="Previous rotation"
+            className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full bg-ink/70 backdrop-blur-sm border border-chalk/20 text-chalk hover:bg-ink/90 hover:border-gold/50 transition-colors ${navButtonSize}`}
+          >
+            <ChevronLeft size={navIconSize} />
+          </button>
+        )}
+        {onNextRotation && (
+          <button
+            onClick={onNextRotation}
+            aria-label="Next rotation"
+            className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full bg-ink/70 backdrop-blur-sm border border-chalk/20 text-chalk hover:bg-ink/90 hover:border-gold/50 transition-colors ${navButtonSize}`}
+          >
+            <ChevronRight size={navIconSize} />
+          </button>
+        )}
 
         {/* court outline + grid - also the tap target for placing a picked-up player */}
         <div

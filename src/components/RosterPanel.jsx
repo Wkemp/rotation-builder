@@ -50,6 +50,8 @@ export default function RosterPanel({
   setLiberos,
   substitutions,
   setSubstitutions,
+  substitutionServers,
+  setSubstitutionServers,
   rotationSets,
   activeRotationSetId,
   onSwitchRotationSet,
@@ -103,6 +105,14 @@ export default function RosterPanel({
         })
     );
     setSubstitutions(substitutions.filter((s) => s.subPlayerId !== id && s.forPlayerId !== id));
+    if (substitutionServers[id] || Object.values(substitutionServers).includes(id)) {
+      const nextServers = { ...substitutionServers };
+      delete nextServers[id];
+      for (const starterId of Object.keys(nextServers)) {
+        if (nextServers[starterId] === id) delete nextServers[starterId];
+      }
+      setSubstitutionServers(nextServers);
+    }
   }
 
   function updatePosition(id, position) {
@@ -169,7 +179,42 @@ export default function RosterPanel({
   }
 
   function removeSubstitution(id) {
+    const removed = substitutions.find((s) => s.id === id);
     setSubstitutions(substitutions.filter((s) => s.id !== id));
+    // If that was the group's designated server and no longer belongs to
+    // the group, the designation no longer makes sense - clear it back to
+    // "starter serves" rather than leave it pointing at someone removed.
+    if (removed && substitutionServers[removed.forPlayerId] === removed.subPlayerId) {
+      const stillHasOtherEntry = substitutions.some(
+        (s) => s.id !== id && s.forPlayerId === removed.forPlayerId && s.subPlayerId === removed.subPlayerId
+      );
+      if (!stillHasOtherEntry) {
+        const next = { ...substitutionServers };
+        delete next[removed.forPlayerId];
+        setSubstitutionServers(next);
+      }
+    }
+  }
+
+  function updateSubstitutionServer(starterId, serverId) {
+    if (serverId === starterId) {
+      // "starter serves" is the default represented state - no override needed
+      const next = { ...substitutionServers };
+      delete next[starterId];
+      setSubstitutionServers(next);
+    } else {
+      setSubstitutionServers({ ...substitutionServers, [starterId]: serverId });
+    }
+  }
+
+  // A player already locked into a different starter's substitution group
+  // can't also sub for this one - real volleyball substitution rule: once
+  // you enter for a rotation slot, you're bound to that slot for the set.
+  function subPlayerOptionsFor(currentForPlayerId) {
+    const lockedToOtherStarter = new Set(
+      substitutions.filter((s) => s.forPlayerId !== currentForPlayerId).map((s) => s.subPlayerId)
+    );
+    return benchPlayers.filter((p) => !lockedToOtherStarter.has(p.id));
   }
 
   // Currently-starting players, in serve order - who a planned sub can replace.
@@ -194,6 +239,15 @@ export default function RosterPanel({
     return players.filter(
       (p) => !liberoIds.has(p.id) && (p.id === currentValue || !usedElsewhere.has(p.id))
     );
+  }
+
+  // Group planned substitutions by starter - every player in a group is
+  // locked to that one starter's slot for the set, so this grouping is the
+  // real unit, not the flat list of individual sub/for pairs.
+  const substitutionsByStarter = {};
+  for (const s of substitutions) {
+    if (!substitutionsByStarter[s.forPlayerId]) substitutionsByStarter[s.forPlayerId] = [];
+    substitutionsByStarter[s.forPlayerId].push(s);
   }
 
   return (
@@ -434,9 +488,11 @@ export default function RosterPanel({
           infoOpen={showSubsInfo}
           onToggleInfo={() => setShowSubsInfo(!showSubsInfo)}
         >
-          Non-libero subs — for a bench player you plan to bring in for a starter, not the
-          libero's automatic back-row swap above. Reference only: shown here and on the cheat
-          sheet, not animated into the court view.
+          Non-libero subs — for bench players you plan to bring in for a starter, not the
+          libero's automatic back-row swap above. Real substitution rule: everyone grouped
+          under a starter is locked to that one slot for the set, and only one of them can ever
+          serve for it - set that with "Serves" below. Reference only: shown here and on the
+          cheat sheet, not animated into the court view.
         </SectionHeading>
 
         <div className="bg-ink-raised rounded-lg px-2.5 py-2 mb-2 space-y-2">
@@ -447,7 +503,7 @@ export default function RosterPanel({
               className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-2 text-base text-chalk truncate"
             >
               <option value="">Sub player…</option>
-              {benchPlayers.map((p) => (
+              {subPlayerOptionsFor(newForPlayerId).map((p) => (
                 <option key={p.id} value={p.id}>
                   {playerOptionLabel(p)}
                 </option>
@@ -496,35 +552,55 @@ export default function RosterPanel({
           </button>
         </div>
 
-        {substitutions.length > 0 ? (
-          <ul className="space-y-1.5">
-            {substitutions.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-start justify-between gap-2 bg-ink-raised rounded px-2.5 py-2 text-xs"
-              >
-                <div>
-                  <div className="text-chalk">
-                    <span className="font-medium">{roster[s.subPlayerId]?.name || '—'}</span>
-                    <span className="text-chalk-dim"> in for </span>
-                    <span className="font-medium">{roster[s.forPlayerId]?.name || '—'}</span>
-                  </div>
-                  <div className="text-chalk-dim mt-0.5">
-                    {s.rotations.length > 0
-                      ? `Rotation${s.rotations.length > 1 ? 's' : ''} ${s.rotations.join(', ')}`
-                      : 'Any rotation'}
-                  </div>
+        {Object.keys(substitutionsByStarter).length > 0 ? (
+          <div className="space-y-2">
+            {Object.entries(substitutionsByStarter).map(([starterId, entries]) => {
+              const groupMembers = [starterId, ...entries.map((s) => s.subPlayerId)];
+              const currentServer = substitutionServers[starterId] || starterId;
+              return (
+                <div key={starterId} className="bg-ink-raised rounded px-2.5 py-2 text-xs space-y-1.5">
+                  <div className="font-medium text-chalk">{roster[starterId]?.name || '—'}</div>
+                  <ul className="space-y-1 pl-2 border-l-2 border-ink-line">
+                    {entries.map((s) => (
+                      <li key={s.id} className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-chalk">{roster[s.subPlayerId]?.name || '—'}</span>
+                          <span className="text-chalk-dim">
+                            {' — '}
+                            {s.rotations.length > 0
+                              ? `Rotation${s.rotations.length > 1 ? 's' : ''} ${s.rotations.join(', ')}`
+                              : 'Any rotation'}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeSubstitution(s.id)}
+                          className="text-chalk-dim hover:text-serve transition-colors flex-shrink-0 p-2 -m-2"
+                          aria-label="Remove substitution"
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <label className="flex items-center gap-2 pt-1">
+                    <span className="text-chalk-dim flex-shrink-0">Serves</span>
+                    <select
+                      value={currentServer}
+                      onChange={(e) => updateSubstitutionServer(starterId, e.target.value)}
+                      className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-1.5 text-chalk truncate"
+                    >
+                      {groupMembers.map((id) => (
+                        <option key={id} value={id}>
+                          {roster[id]?.name || '—'}
+                          {id === starterId ? ' (starter)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-                <button
-                  onClick={() => removeSubstitution(s.id)}
-                  className="text-chalk-dim hover:text-serve transition-colors flex-shrink-0 p-2 -m-2"
-                  aria-label="Remove substitution"
-                >
-                  <X size={14} />
-                </button>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         ) : (
           <p className="text-xs text-chalk-dim italic">No planned substitutions yet.</p>
         )}

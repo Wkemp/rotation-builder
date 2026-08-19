@@ -132,14 +132,31 @@ export function liberoServesFor(libero) {
  * as if serving weren't allowed at all).
  *
  * `substitutions` is an array of { subPlayerId, forPlayerId, rotations }.
- * A substitution is active for a rotation if `rotations` is empty (meaning
- * "any rotation") or includes the current rotation number. A planned
- * substitution takes priority over a libero swap for the same starter: it's
- * a more specific, deliberately-scoped coaching decision for that exact
- * rotation, and if a regular sub has taken a starter's spot, that starter
- * isn't actually on the court for the libero to swap out from behind.
+ * Real volleyball substitution rule: multiple players can cycle through the
+ * SAME rotation slot over a set (e.g. starter A, subbed for by B, subbed
+ * back for by A, or a third player C also cycling through that one slot) -
+ * but every one of them is locked to that single slot for the whole set,
+ * and only ONE of them may ever serve for it. `rotations` (empty = "any
+ * rotation") is this app's planning-level proxy for "who's shown active in
+ * this slot for this rotation" - it doesn't model exact live substitution
+ * timing, same simplification as the rest of this app's rotation model.
+ * A planned substitution takes priority over a libero swap for the same
+ * starter: it's a more specific, deliberately-scoped coaching decision for
+ * that exact rotation, and if a regular sub has taken a starter's spot,
+ * that starter isn't actually on the court for the libero to swap out from
+ * behind.
+ *
+ * `substitutionServers` is a map of starter playerId -> the ONE player
+ * (the starter themselves, or one of their subs) authorized to serve for
+ * that slot. This is checked independently of which sub is "active" that
+ * rotation: a serving specialist can be shown serving even in a rotation
+ * where they're not otherwise marked active, and a non-authorized sub is
+ * never shown serving no matter what - matching the real rule that serving
+ * rights belong to the slot, locked to whoever first serves for it, not to
+ * whichever player happens to be on court at a given moment. Unset =
+ * the starter still holds serving rights (nobody's taken them over yet).
  */
-export function resolveCourt(rotationNum, slots, liberos = [], substitutions = []) {
+export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [], substitutionServers = {}) {
   const result = {};
 
   // For each libero, resolve which single target (if any) they're actively
@@ -166,9 +183,15 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
   // Map starter playerId -> substitute playerId, for whichever planned
   // substitutions apply to this specific rotation.
   const activeSubByTarget = {};
+  // Which players belong to which starter's substitution group, regardless
+  // of whether they're the "active" one this rotation - needed for the
+  // zone-1 serve-authorization override, which applies independent of that.
+  const hasSubGroup = new Set();
   for (const s of substitutions) {
+    if (!s.forPlayerId || !s.subPlayerId) continue;
+    hasSubGroup.add(s.forPlayerId);
     const applies = !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
-    if (applies && s.forPlayerId && s.subPlayerId) {
+    if (applies) {
       activeSubByTarget[s.forPlayerId] = s.subPlayerId;
     }
   }
@@ -193,6 +216,17 @@ export function resolveCourt(rotationNum, slots, liberos = [], substitutions = [
       } else {
         occupantId = activeLibero.liberoPlayerId;
         isLibero = true;
+      }
+    }
+
+    // Zone-1 serve-rights override: whoever's shown must be the group's
+    // authorized server, regardless of who was otherwise "active" above.
+    if (zone === 1 && playerId && hasSubGroup.has(playerId)) {
+      const authorizedServer = substitutionServers[playerId] || playerId;
+      if (occupantId !== authorizedServer) {
+        occupantId = authorizedServer;
+        isSub = authorizedServer !== playerId;
+        isLibero = false;
       }
     }
 

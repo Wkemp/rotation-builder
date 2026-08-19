@@ -102,6 +102,12 @@ export function remapTeamIds(team) {
         subPlayerId: playerIdMap[s.subPlayerId] || s.subPlayerId,
         forPlayerId: playerIdMap[s.forPlayerId] || s.forPlayerId,
       })),
+      substitutionServers: Object.fromEntries(
+        Object.entries(oldSet.substitutionServers || {}).map(([starterId, serverId]) => [
+          playerIdMap[starterId] || starterId,
+          playerIdMap[serverId] || serverId,
+        ])
+      ),
     };
   }
 

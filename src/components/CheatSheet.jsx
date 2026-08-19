@@ -12,8 +12,8 @@ import {
 
 /** One small court diagram: net line, six positioned circles, and a caption
  * noting any libero/sub swaps active for this specific rotation. */
-function MiniCourt({ rotationNum, slots, liberos, substitutions, roster, activeFormation }) {
-  const court = resolveCourt(rotationNum, slots, liberos, substitutions);
+function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionServers, roster, activeFormation }) {
+  const court = resolveCourt(rotationNum, slots, liberos, substitutions, substitutionServers);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const servingPlayer = playerAt(court[1].playerId);
 
@@ -91,7 +91,7 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, roster, activeF
 }
 
 /** One printable page: header, a 3x2 grid of MiniCourts, optional footer content. */
-function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liberos, substitutions, roster, footer }) {
+function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liberos, substitutions, substitutionServers, roster, footer }) {
   return (
     <div
       className={`p-6 print:p-0 print:min-h-screen print:flex print:flex-col ${
@@ -110,6 +110,7 @@ function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liber
             slots={slots}
             liberos={liberos}
             substitutions={substitutions}
+            substitutionServers={substitutionServers}
             roster={roster}
             activeFormation={getFormation ? getFormation(rotationNum) : null}
           />
@@ -120,7 +121,7 @@ function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liber
   );
 }
 
-export default function CheatSheet({ teamName, slots, liberos, substitutions = [], formations = {}, roster }) {
+export default function CheatSheet({ teamName, slots, liberos, substitutions = [], substitutionServers = {}, formations = {}, roster }) {
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const hasServeFormations = Object.keys(formations).some((k) => k.endsWith('-serve'));
   const hasReceiveFormations = Object.keys(formations).some((k) => k.endsWith('-receive'));
@@ -162,6 +163,7 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
         slots={slots}
         liberos={liberos}
         substitutions={substitutions}
+        substitutionServers={substitutionServers}
         roster={roster}
         footer={substitutionsFooter}
       />
@@ -174,6 +176,7 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
           slots={slots}
           liberos={liberos}
           substitutions={substitutions}
+          substitutionServers={substitutionServers}
           roster={roster}
         />
       )}
@@ -186,6 +189,7 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
           slots={slots}
           liberos={liberos}
           substitutions={substitutions}
+          substitutionServers={substitutionServers}
           roster={roster}
         />
       )}
