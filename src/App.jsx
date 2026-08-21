@@ -45,6 +45,7 @@ export default function App() {
   const substitutions = activeSet.substitutions || [];
   const substitutionServers = activeSet.substitutionServers || {};
   const formations = activeSet.formations || {};
+  const rotationNotes = activeSet.rotationNotes || {};
 
   // --- Roster (team) level ---
 
@@ -170,6 +171,18 @@ export default function App() {
     const next = { ...formations };
     delete next[key];
     updateActiveRotationSet({ formations: next });
+  }
+
+  // --- Rotation notes ---
+
+  function updateRotationNote(rotationNum, text) {
+    const next = { ...rotationNotes };
+    if (text) {
+      next[rotationNum] = text;
+    } else {
+      delete next[rotationNum]; // empty note - don't keep clutter in storage
+    }
+    updateActiveRotationSet({ rotationNotes: next });
   }
 
   // --- File export/import ---
@@ -389,6 +402,8 @@ export default function App() {
                   isFullscreen={isFullscreen}
                   onPrevRotation={() => setCurrent(current === 1 ? 6 : current - 1)}
                   onNextRotation={() => setCurrent(current === 6 ? 1 : current + 1)}
+                  note={rotationNotes[current] || ''}
+                  onUpdateNote={(text) => updateRotationNote(current, text)}
                 />
               </div>
             </div>
@@ -409,6 +424,7 @@ export default function App() {
             substitutions={substitutions}
             substitutionServers={substitutionServers}
             formations={formations}
+            rotationNotes={rotationNotes}
             roster={activeRoster.players}
           />
         </main>

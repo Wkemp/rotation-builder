@@ -35,6 +35,8 @@ export default function CourtDiagram({
   isFullscreen = false,
   onPrevRotation,
   onNextRotation,
+  note = '',
+  onUpdateNote,
 }) {
   const court = resolveCourt(rotationNum, slots, liberos, substitutions, substitutionServers);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
@@ -82,7 +84,7 @@ export default function CourtDiagram({
 
   return (
     <div className="w-full select-none">
-      <div className="relative w-full aspect-[3/2]">
+      <div className={`relative w-full aspect-[3/2] ${isFullscreen ? 'mb-28' : 'mb-16'}`}>
         {/* net: antennas at the sidelines, a solid top tape, and a mesh band
             hanging below it - reads as an actual net, not a dashed line */}
         <div className="absolute -top-4 left-0 right-0 h-4 pointer-events-none">
@@ -143,9 +145,17 @@ export default function CourtDiagram({
         {[1, 2, 3, 4, 5, 6].map((slotNum) => {
           const zone = zoneForSlot(rotationNum, slotNum);
           const customCell = activeFormation?.[slotNum - 1];
-          const pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
-          const cell = court[zone];
+          let pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
           const isServing = zone === 1;
+          // The server never actually stands inside zone 1 - they're behind
+          // the end line until contact. Steps them back there for Base and
+          // Serving views (not Receiving, where this team isn't serving),
+          // unless the coach has explicitly placed this slot via the
+          // formation editor, which always wins.
+          if (isServing && !customCell && serveState !== 'receive') {
+            pos = { x: ZONE_POS[1].x, y: 1.04 };
+          }
+          const cell = court[zone];
           const player = playerAt(cell.playerId);
           const isPickedUp = pickedUpSlot === slotNum;
 
@@ -219,6 +229,18 @@ export default function CourtDiagram({
             </button>
           )}
         </div>
+      )}
+
+      {onUpdateNote && (
+        <textarea
+          value={note}
+          onChange={(e) => onUpdateNote(e.target.value)}
+          placeholder="Notes for this rotation (optional) — specifics, coaching tips, anything worth remembering..."
+          rows={2}
+          className={`w-full mt-3 bg-ink-raised border border-ink-line rounded-lg px-3 py-2 text-chalk placeholder:text-chalk-dim/50 resize-none ${
+            isFullscreen ? 'text-lg' : 'text-base'
+          }`}
+        />
       )}
 
       {editingFormation && (

@@ -12,7 +12,17 @@ import {
 
 /** One small court diagram: net line, six positioned circles, and a caption
  * noting any libero/sub swaps active for this specific rotation. */
-function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionServers, roster, activeFormation }) {
+function MiniCourt({
+  rotationNum,
+  slots,
+  liberos,
+  substitutions,
+  substitutionServers,
+  roster,
+  activeFormation,
+  serveState,
+  note,
+}) {
   const court = resolveCourt(rotationNum, slots, liberos, substitutions, substitutionServers);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const servingPlayer = playerAt(court[1].playerId);
@@ -37,7 +47,7 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionSer
         <span className="font-display font-semibold text-sm print:text-lg">Rotation {rotationNum}</span>
         <span className="text-[10px] text-gray-500 print:text-sm">Serving #{servingPlayer.number || '–'}</span>
       </div>
-      <div className="relative w-full aspect-[3/2] border border-black rounded">
+      <div className="relative w-full aspect-[3/2] border border-black rounded mb-8">
         {/* net: a bold line is enough at this size */}
         <div className="absolute -top-1 left-0 right-0 h-[3px] bg-black rounded-full" />
         {/* thin zone guide lines */}
@@ -48,7 +58,13 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionSer
         {[1, 2, 3, 4, 5, 6].map((slotNum) => {
           const zone = zoneForSlot(rotationNum, slotNum);
           const customCell = activeFormation?.[slotNum - 1];
-          const pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
+          const isServing = zone === 1;
+          let pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
+          // Same "server steps behind the end line" treatment as the
+          // interactive view, for Base/Serving pages (not Receiving).
+          if (isServing && !customCell && serveState !== 'receive') {
+            pos = { x: ZONE_POS[1].x, y: 1.04 };
+          }
           const cell = court[zone];
           const player = playerAt(cell.playerId);
           // Libero and subs share one "not the normal starter" treatment
@@ -82,8 +98,13 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionSer
         })}
       </div>
       {notes.length > 0 && (
-        <div className="mt-1.5 print:mt-2 text-[8px] print:text-[11px] text-gray-600 leading-tight">
+        <div className="text-[8px] print:text-[11px] text-gray-600 leading-tight">
           {notes.join(' · ')}
+        </div>
+      )}
+      {note && (
+        <div className="mt-1 pt-1 border-t border-gray-200 text-[8px] print:text-[11px] text-gray-700 italic leading-tight">
+          {note}
         </div>
       )}
     </div>
@@ -91,7 +112,20 @@ function MiniCourt({ rotationNum, slots, liberos, substitutions, substitutionSer
 }
 
 /** One printable page: header, a 3x2 grid of MiniCourts, optional footer content. */
-function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liberos, substitutions, substitutionServers, roster, footer }) {
+function RotationPage({
+  title,
+  subtitle,
+  isFirstPage,
+  getFormation,
+  slots,
+  liberos,
+  substitutions,
+  substitutionServers,
+  roster,
+  serveState,
+  rotationNotes,
+  footer,
+}) {
   return (
     <div
       className={`p-6 print:p-0 print:min-h-screen print:flex print:flex-col ${
@@ -113,6 +147,8 @@ function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liber
             substitutionServers={substitutionServers}
             roster={roster}
             activeFormation={getFormation ? getFormation(rotationNum) : null}
+            serveState={serveState}
+            note={rotationNotes?.[rotationNum]}
           />
         ))}
       </div>
@@ -121,7 +157,16 @@ function RotationPage({ title, subtitle, isFirstPage, getFormation, slots, liber
   );
 }
 
-export default function CheatSheet({ teamName, slots, liberos, substitutions = [], substitutionServers = {}, formations = {}, roster }) {
+export default function CheatSheet({
+  teamName,
+  slots,
+  liberos,
+  substitutions = [],
+  substitutionServers = {},
+  formations = {},
+  rotationNotes = {},
+  roster,
+}) {
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const hasServeFormations = Object.keys(formations).some((k) => k.endsWith('-serve'));
   const hasReceiveFormations = Object.keys(formations).some((k) => k.endsWith('-receive'));
@@ -165,6 +210,8 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
         substitutions={substitutions}
         substitutionServers={substitutionServers}
         roster={roster}
+        serveState="base"
+        rotationNotes={rotationNotes}
         footer={substitutionsFooter}
       />
 
@@ -178,6 +225,8 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
           substitutions={substitutions}
           substitutionServers={substitutionServers}
           roster={roster}
+          serveState="serve"
+          rotationNotes={rotationNotes}
         />
       )}
 
@@ -191,6 +240,8 @@ export default function CheatSheet({ teamName, slots, liberos, substitutions = [
           substitutions={substitutions}
           substitutionServers={substitutionServers}
           roster={roster}
+          serveState="receive"
+          rotationNotes={rotationNotes}
         />
       )}
     </div>

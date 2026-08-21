@@ -4,11 +4,12 @@ import { makePlayerId, makeId } from '../lib/id';
 import { liberoTargets, liberoServesFor } from '../lib/rotation';
 import EntitySwitcher from './EntitySwitcher';
 
-const POSITIONS = ['OH', 'MB', 'OPP', 'S', 'L', 'DS'];
+const POSITIONS = ['OH', 'MB', 'OPP', 'RH', 'S', 'L', 'DS'];
 const POSITION_NAMES = {
   OH: 'Outside Hitter',
   MB: 'Middle Blocker',
-  OPP: 'Opposite / Right-side Hitter',
+  OPP: 'Opposite',
+  RH: 'Right-side Hitter',
   S: 'Setter',
   L: 'Libero',
   DS: 'Defensive Specialist',

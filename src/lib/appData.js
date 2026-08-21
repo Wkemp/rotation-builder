@@ -17,6 +17,9 @@ export function createEmptyRotationSet(name = 'Default') {
     // either null (not customized - falls back to the Base zone-center
     // position) or a { col, row } grid cell.
     formations: {},
+    // Free-text coach notes, keyed by rotation number (1-6). One note per
+    // rotation, shared across Base/Serving/Receiving views of it.
+    rotationNotes: {},
   };
 }
 
@@ -73,6 +76,7 @@ export function createInitialAppData() {
       substitutions: [],
       substitutionServers: {},
       formations: {},
+      rotationNotes: {},
     };
     const roster = {
       id: makeId('team_'),
