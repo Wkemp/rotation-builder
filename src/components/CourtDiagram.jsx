@@ -7,9 +7,11 @@ import {
   isFrontRow,
   gridToFraction,
   fractionToGrid,
+  fractionToOutsideGrid,
   formationKey,
   GRID_COLS,
   GRID_ROWS,
+  OUTSIDE_ROW,
   ZONE_POS,
 } from '../lib/rotation';
 
@@ -41,6 +43,7 @@ export default function CourtDiagram({
   const court = resolveCourt(rotationNum, slots, liberos, substitutions, substitutionServers);
   const playerAt = (id) => roster[id] || { name: '—', number: '' };
   const [pickedUpSlot, setPickedUpSlot] = useState(null);
+  const [diagramTab, setDiagramTab] = useState('court'); // 'court' | 'notes'
   const courtRef = useRef(null);
 
   const activeFormation =
@@ -66,6 +69,12 @@ export default function CourtDiagram({
   const sectionLabel = isFullscreen ? 'text-sm' : 'text-[10px]';
   const navButtonSize = isFullscreen ? 'w-14 h-14' : 'w-11 h-11';
   const navIconSize = isFullscreen ? 24 : 18;
+  // Margin reserved below the court box for the "outside the end line" strip
+  // (a genuine extra row, 1/GRID_ROWS = 10% of court height) plus enough
+  // slack for a puck's own radius to extend past it without being clipped
+  // by an ancestor's overflow:hidden - computed for the real size range this
+  // app runs at (iPad through full screen), not guessed.
+  const courtBottomMargin = isFullscreen ? 'mb-40' : 'mb-20';
 
   function handlePuckClick(slotNum) {
     if (!editingFormation) return;
@@ -82,261 +91,322 @@ export default function CourtDiagram({
     setPickedUpSlot(null);
   }
 
+  function handleOutsideClick(e) {
+    if (!editingFormation || pickedUpSlot === null) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const cell = fractionToOutsideGrid(x);
+    onPlacePlayer?.(pickedUpSlot - 1, cell);
+    setPickedUpSlot(null);
+  }
+
   return (
     <div className="w-full select-none">
-      <div className={`relative w-full aspect-[3/2] ${isFullscreen ? 'mb-28' : 'mb-16'}`}>
-        {/* net: antennas at the sidelines, a solid top tape, and a mesh band
-            hanging below it - reads as an actual net, not a dashed line */}
-        <div className="absolute -top-4 left-0 right-0 h-4 pointer-events-none">
-          <div className="absolute -left-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
-          <div className="absolute -right-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
-          <div className="absolute top-0.5 left-0 right-0 h-1.5 bg-chalk rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)]" />
-          <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
-        </div>
-
-        {/* court outline + grid - also the tap target for placing a picked-up player */}
-        <div
-          ref={courtRef}
-          onClick={handleCourtClick}
-          className={`absolute inset-0 rounded-lg border-2 border-chalk/40 overflow-hidden bg-ink-raised z-0 ${
-            editingFormation && pickedUpSlot !== null ? 'cursor-crosshair' : ''
-          }`}
-        >
-          <div className="absolute left-0 right-0 top-1/2 h-px bg-chalk/20" />
-          <div className="absolute top-0 bottom-0 left-1/2 w-px bg-chalk/20" />
-          <div className="absolute top-0 bottom-0 left-1/3 w-px bg-chalk/10" />
-          <div className="absolute top-0 bottom-0 left-2/3 w-px bg-chalk/10" />
-
-          {editingFormation && (
-            <div className="absolute inset-0 pointer-events-none">
-              {Array.from({ length: GRID_COLS - 1 }).map((_, i) => (
-                <div
-                  key={`gc-${i}`}
-                  className="absolute top-0 bottom-0 w-px bg-gold/15"
-                  style={{ left: `${((i + 1) / GRID_COLS) * 100}%` }}
-                />
-              ))}
-              {Array.from({ length: GRID_ROWS - 1 }).map((_, i) => (
-                <div
-                  key={`gr-${i}`}
-                  className="absolute left-0 right-0 h-px bg-gold/15"
-                  style={{ top: `${((i + 1) / GRID_ROWS) * 100}%` }}
-                />
-              ))}
-            </div>
-          )}
-
-          {showZoneLabels &&
-            Object.entries(ZONE_CELL).map(([zone, { col, row }]) => (
-              <div
-                key={`label-${zone}`}
-                className={`absolute font-data font-medium tracking-wide text-chalk-dim/90 bg-ink-raised/90 rounded pointer-events-none ${zoneLabelSize}`}
-                style={{
-                  left: `calc(${(col / 3) * 100}% + 6px)`,
-                  top: `calc(${(row / 2) * 100}% + 6px)`,
-                }}
-              >
-                {zoneLabel(zone)}
-              </div>
-            ))}
-        </div>
-
-        {/* player pucks - keyed by slot so position transitions animate smoothly */}
-        {[1, 2, 3, 4, 5, 6].map((slotNum) => {
-          const zone = zoneForSlot(rotationNum, slotNum);
-          const customCell = activeFormation?.[slotNum - 1];
-          let pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
-          const isServing = zone === 1;
-          // The server never actually stands inside zone 1 - they're behind
-          // the end line until contact. Steps them back there for Base and
-          // Serving views (not Receiving, where this team isn't serving),
-          // unless the coach has explicitly placed this slot via the
-          // formation editor, which always wins.
-          if (isServing && !customCell && serveState !== 'receive') {
-            pos = { x: ZONE_POS[1].x, y: 1.04 };
-          }
-          const cell = court[zone];
-          const player = playerAt(cell.playerId);
-          const isPickedUp = pickedUpSlot === slotNum;
-
-          return (
-            <div
-              key={`slot-${slotNum}`}
-              onClick={() => handlePuckClick(slotNum)}
-              className={`absolute flex flex-col items-center transition-all duration-700 ease-out z-10 ${
-                editingFormation ? 'cursor-pointer' : ''
-              }`}
-              style={{
-                left: `${pos.x * 100}%`,
-                top: `${pos.y * 100}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div
-                className={`relative flex items-center justify-center rounded-full font-display font-semibold shadow-lg transition-colors duration-500 ${puckSize} ${
-                  isPickedUp ? 'ring-4 ring-gold animate-pulse' : ''
-                } ${
-                  cell.isSub
-                    ? 'bg-sub text-chalk'
-                    : cell.isLibero
-                      ? 'bg-court-line text-chalk'
-                      : isFrontRow(zone)
-                        ? 'bg-gold text-ink'
-                        : 'bg-ink text-chalk border-2 border-chalk-dim'
-                }`}
-              >
-                {cell.isLibero ? 'L' : player.number || slotNum}
-                {isServing && (
-                  <span
-                    className={`absolute rounded-full bg-serve border-2 border-ink ${servingDot}`}
-                  />
-                )}
-              </div>
-              <span
-                className={`font-medium text-chalk-dim truncate text-center ${nameLabel} ${nameLabelWidth}`}
-              >
-                {player.name || '—'}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* prev/next rotation - a dedicated row below the diagram, not overlaid
-          on it, so it can't collide with zone labels or pucks no matter
-          what's toggled on */}
-      {(onPrevRotation || onNextRotation) && (
-        <div className="flex items-center justify-center gap-3 mt-3">
-          {onPrevRotation && (
-            <button
-              onClick={onPrevRotation}
-              aria-label="Previous rotation"
-              className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
-            >
-              <ChevronLeft size={navIconSize} />
-            </button>
-          )}
-          <span className={`font-display font-semibold text-chalk-dim ${isFullscreen ? 'text-lg' : 'text-sm'}`}>
-            Rotation {rotationNum}
-          </span>
-          {onNextRotation && (
-            <button
-              onClick={onNextRotation}
-              aria-label="Next rotation"
-              className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
-            >
-              <ChevronRight size={navIconSize} />
-            </button>
-          )}
+      {onUpdateNote && (
+        <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 mb-3 w-fit">
+          <button
+            onClick={() => setDiagramTab('court')}
+            className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+              diagramTab === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
+            }`}
+          >
+            Court
+          </button>
+          <button
+            onClick={() => setDiagramTab('notes')}
+            className={`h-9 px-3 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              diagramTab === 'notes' ? 'bg-gold text-ink' : 'text-chalk-dim'
+            }`}
+          >
+            Notes
+            {note && <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />}
+          </button>
         </div>
       )}
 
-      {onUpdateNote && (
+      {(!onUpdateNote || diagramTab === 'court') && (
+        <>
+          <div className={`relative w-full aspect-[3/2] ${courtBottomMargin}`}>
+            {/* net: antennas at the sidelines, a solid top tape, and a mesh band
+                hanging below it - reads as an actual net, not a dashed line */}
+            <div className="absolute -top-4 left-0 right-0 h-4 pointer-events-none">
+              <div className="absolute -left-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
+              <div className="absolute -right-0.5 top-0 w-1 h-5 bg-serve rounded-full shadow-sm" />
+              <div className="absolute top-0.5 left-0 right-0 h-1.5 bg-chalk rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)]" />
+              <div className="absolute top-2.5 left-0 right-0 h-2 bg-[repeating-linear-gradient(45deg,var(--color-chalk-dim)_0,var(--color-chalk-dim)_1px,transparent_1px,transparent_5px)] opacity-40" />
+            </div>
+
+            {/* court outline + grid - also the tap target for placing a picked-up player */}
+            <div
+              ref={courtRef}
+              onClick={handleCourtClick}
+              className={`absolute inset-0 rounded-lg border-2 border-chalk/40 overflow-hidden bg-ink-raised z-0 ${
+                editingFormation && pickedUpSlot !== null ? 'cursor-crosshair' : ''
+              }`}
+            >
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-chalk/20" />
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-chalk/20" />
+              <div className="absolute top-0 bottom-0 left-1/3 w-px bg-chalk/10" />
+              <div className="absolute top-0 bottom-0 left-2/3 w-px bg-chalk/10" />
+
+              {editingFormation && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {Array.from({ length: GRID_COLS - 1 }).map((_, i) => (
+                    <div
+                      key={`gc-${i}`}
+                      className="absolute top-0 bottom-0 w-px bg-gold/15"
+                      style={{ left: `${((i + 1) / GRID_COLS) * 100}%` }}
+                    />
+                  ))}
+                  {Array.from({ length: GRID_ROWS - 1 }).map((_, i) => (
+                    <div
+                      key={`gr-${i}`}
+                      className="absolute left-0 right-0 h-px bg-gold/15"
+                      style={{ top: `${((i + 1) / GRID_ROWS) * 100}%` }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {showZoneLabels &&
+                Object.entries(ZONE_CELL).map(([zone, { col, row }]) => (
+                  <div
+                    key={`label-${zone}`}
+                    className={`absolute font-data font-medium tracking-wide text-chalk-dim/90 bg-ink-raised/90 rounded pointer-events-none ${zoneLabelSize}`}
+                    style={{
+                      left: `calc(${(col / 3) * 100}% + 6px)`,
+                      top: `calc(${(row / 2) * 100}% + 6px)`,
+                    }}
+                  >
+                    {zoneLabel(zone)}
+                  </div>
+                ))}
+            </div>
+
+            {/* outside the end line: a genuine extra row, the same height as
+                any other row, for placing a player - most notably the server
+                - truly off the court rather than just near its edge. Visually
+                distinct (dashed edge, hatched fill, no solid border) so it
+                reads as "out of bounds," not part of the court itself. */}
+            <div
+              onClick={handleOutsideClick}
+              className={`absolute left-0 right-0 border-t border-dashed border-chalk/25 bg-[repeating-linear-gradient(135deg,var(--color-ink-line)_0,var(--color-ink-line)_1px,transparent_1px,transparent_6px)] z-0 ${
+                editingFormation && pickedUpSlot !== null ? 'cursor-crosshair' : ''
+              }`}
+              style={{ top: '100%', height: `${(1 / GRID_ROWS) * 100}%` }}
+            >
+              {editingFormation && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {Array.from({ length: GRID_COLS - 1 }).map((_, i) => (
+                    <div
+                      key={`ogc-${i}`}
+                      className="absolute top-0 bottom-0 w-px bg-gold/15"
+                      style={{ left: `${((i + 1) / GRID_COLS) * 100}%` }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* player pucks - keyed by slot so position transitions animate smoothly */}
+            {[1, 2, 3, 4, 5, 6].map((slotNum) => {
+              const zone = zoneForSlot(rotationNum, slotNum);
+              const customCell = activeFormation?.[slotNum - 1];
+              let pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
+              const isServing = zone === 1;
+              // The server never actually stands inside zone 1 - they're
+              // behind the end line until contact. Steps them back there,
+              // snapped to the same outside-row grid cell a coach could tap
+              // to, for Base and Serving views (not Receiving, where this
+              // team isn't serving), unless the coach has explicitly placed
+              // this slot via the formation editor, which always wins.
+              if (isServing && !customCell && serveState !== 'receive') {
+                pos = { x: ZONE_POS[1].x, y: (OUTSIDE_ROW + 0.5) / GRID_ROWS };
+              }
+              const cell = court[zone];
+              const player = playerAt(cell.playerId);
+              const isPickedUp = pickedUpSlot === slotNum;
+
+              return (
+                <div
+                  key={`slot-${slotNum}`}
+                  onClick={() => handlePuckClick(slotNum)}
+                  className={`absolute flex flex-col items-center transition-all duration-700 ease-out z-10 ${
+                    editingFormation ? 'cursor-pointer' : ''
+                  }`}
+                  style={{
+                    left: `${pos.x * 100}%`,
+                    top: `${pos.y * 100}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  <div
+                    className={`relative flex items-center justify-center rounded-full font-display font-semibold shadow-lg transition-colors duration-500 ${puckSize} ${
+                      isPickedUp ? 'ring-4 ring-gold animate-pulse' : ''
+                    } ${
+                      cell.isSub
+                        ? 'bg-sub text-chalk'
+                        : cell.isLibero
+                          ? 'bg-court-line text-chalk'
+                          : isFrontRow(zone)
+                            ? 'bg-gold text-ink'
+                            : 'bg-ink text-chalk border-2 border-chalk-dim'
+                    }`}
+                  >
+                    {cell.isLibero ? 'L' : player.number || slotNum}
+                    {isServing && (
+                      <span
+                        className={`absolute rounded-full bg-serve border-2 border-ink ${servingDot}`}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className={`font-medium text-chalk-dim truncate text-center ${nameLabel} ${nameLabelWidth}`}
+                  >
+                    {player.name || '—'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* prev/next rotation - a dedicated row below the diagram, not overlaid
+              on it, so it can't collide with zone labels or pucks no matter
+              what's toggled on */}
+          {(onPrevRotation || onNextRotation) && (
+            <div className="flex items-center justify-center gap-3 mt-3">
+              {onPrevRotation && (
+                <button
+                  onClick={onPrevRotation}
+                  aria-label="Previous rotation"
+                  className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
+                >
+                  <ChevronLeft size={navIconSize} />
+                </button>
+              )}
+              <span className={`font-display font-semibold text-chalk-dim ${isFullscreen ? 'text-lg' : 'text-sm'}`}>
+                Rotation {rotationNum}
+              </span>
+              {onNextRotation && (
+                <button
+                  onClick={onNextRotation}
+                  aria-label="Next rotation"
+                  className={`flex items-center justify-center rounded-full bg-ink-raised border border-ink-line text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors ${navButtonSize}`}
+                >
+                  <ChevronRight size={navIconSize} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {editingFormation && (
+            <p className={`mt-2 text-gold text-center ${hintText}`}>
+              {pickedUpSlot === null
+                ? 'Tap a player, then tap where they should stand.'
+                : 'Tap anywhere on the court (or the outside strip below it) to place them there.'}
+            </p>
+          )}
+
+          {/* Libero + Bench share one row: substitutions on the left, libero pinned
+              to the right end - no reason for either to cost its own line. */}
+          {(liberos.length > 0 || substitutions.length > 0) && (
+            <div className="mt-4 pt-3 border-t border-ink-line flex items-start gap-4">
+              {substitutions.length > 0 && (
+                <div className="flex-1 min-w-0">
+                  <div
+                    className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 ${sectionLabel}`}
+                  >
+                    Bench
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {substitutions.map((s) => {
+                      const isActive =
+                        !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
+                      const subPlayer = playerAt(s.subPlayerId);
+                      const forPlayer = playerAt(s.forPlayerId);
+                      return (
+                        <div
+                          key={s.id}
+                          className="flex flex-col items-center transition-opacity duration-500"
+                          style={{ opacity: isActive ? 1 : 0.4 }}
+                        >
+                          <div
+                            className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
+                              isActive
+                                ? 'bg-sub text-chalk border-sub'
+                                : 'bg-ink text-chalk-dim border-ink-line'
+                            }`}
+                          >
+                            {subPlayer.number || '?'}
+                          </div>
+                          <span
+                            className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
+                          >
+                            {isActive ? 'in for' : 'for'} {forPlayer.name || '—'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {liberos.length > 0 && (
+                <div className="flex-shrink-0 ml-auto">
+                  <div
+                    className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 text-right ${sectionLabel}`}
+                  >
+                    Libero
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-3">
+                    {liberos.map((l) => {
+                      const activeEntry = Object.values(court).find(
+                        (c) => c.isLibero && c.playerId === l.playerId
+                      );
+                      const isActive = !!activeEntry;
+                      const liberoPlayer = playerAt(l.playerId);
+                      const coveringName = activeEntry ? playerAt(activeEntry.originalPlayerId).name : null;
+                      return (
+                        <div
+                          key={l.playerId}
+                          className="flex flex-col items-center transition-opacity duration-500"
+                          style={{ opacity: isActive ? 1 : 0.4 }}
+                        >
+                          <div
+                            className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
+                              isActive
+                                ? 'bg-court-line text-chalk border-court-line'
+                                : 'bg-ink text-chalk-dim border-ink-line'
+                            }`}
+                          >
+                            {liberoPlayer.number || 'L'}
+                          </div>
+                          <span
+                            className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
+                          >
+                            {isActive ? `for ${coveringName}` : 'on bench'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {onUpdateNote && diagramTab === 'notes' && (
         <textarea
           value={note}
           onChange={(e) => onUpdateNote(e.target.value)}
           placeholder="Notes for this rotation (optional) — specifics, coaching tips, anything worth remembering..."
-          rows={2}
-          className={`w-full mt-3 bg-ink-raised border border-ink-line rounded-lg px-3 py-2 text-chalk placeholder:text-chalk-dim/50 resize-none ${
+          rows={10}
+          className={`w-full bg-ink-raised border border-ink-line rounded-lg px-3 py-2 text-chalk placeholder:text-chalk-dim/50 resize-none ${
             isFullscreen ? 'text-lg' : 'text-base'
           }`}
         />
-      )}
-
-      {editingFormation && (
-        <p className={`mt-2 text-gold text-center ${hintText}`}>
-          {pickedUpSlot === null
-            ? 'Tap a player, then tap where they should stand.'
-            : 'Tap anywhere on the court to place them there.'}
-        </p>
-      )}
-
-      {/* Libero + Bench share one row: substitutions on the left, libero pinned
-          to the right end - no reason for either to cost its own line. */}
-      {(liberos.length > 0 || substitutions.length > 0) && (
-        <div className="mt-4 pt-3 border-t border-ink-line flex items-start gap-4">
-          {substitutions.length > 0 && (
-            <div className="flex-1 min-w-0">
-              <div
-                className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 ${sectionLabel}`}
-              >
-                Bench
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {substitutions.map((s) => {
-                  const isActive =
-                    !s.rotations || s.rotations.length === 0 || s.rotations.includes(rotationNum);
-                  const subPlayer = playerAt(s.subPlayerId);
-                  const forPlayer = playerAt(s.forPlayerId);
-                  return (
-                    <div
-                      key={s.id}
-                      className="flex flex-col items-center transition-opacity duration-500"
-                      style={{ opacity: isActive ? 1 : 0.4 }}
-                    >
-                      <div
-                        className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
-                          isActive
-                            ? 'bg-sub text-chalk border-sub'
-                            : 'bg-ink text-chalk-dim border-ink-line'
-                        }`}
-                      >
-                        {subPlayer.number || '?'}
-                      </div>
-                      <span
-                        className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
-                      >
-                        {isActive ? 'in for' : 'for'} {forPlayer.name || '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {liberos.length > 0 && (
-            <div className="flex-shrink-0 ml-auto">
-              <div
-                className={`uppercase tracking-widest text-chalk-dim/70 font-display mb-2 text-right ${sectionLabel}`}
-              >
-                Libero
-              </div>
-              <div className="flex flex-wrap justify-end gap-3">
-                {liberos.map((l) => {
-                  const activeEntry = Object.values(court).find(
-                    (c) => c.isLibero && c.playerId === l.playerId
-                  );
-                  const isActive = !!activeEntry;
-                  const liberoPlayer = playerAt(l.playerId);
-                  const coveringName = activeEntry ? playerAt(activeEntry.originalPlayerId).name : null;
-                  return (
-                    <div
-                      key={l.playerId}
-                      className="flex flex-col items-center transition-opacity duration-500"
-                      style={{ opacity: isActive ? 1 : 0.4 }}
-                    >
-                      <div
-                        className={`flex items-center justify-center rounded-full font-display font-semibold border-2 transition-colors duration-500 ${benchChip} ${
-                          isActive
-                            ? 'bg-court-line text-chalk border-court-line'
-                            : 'bg-ink text-chalk-dim border-ink-line'
-                        }`}
-                      >
-                        {liberoPlayer.number || 'L'}
-                      </div>
-                      <span
-                        className={`text-chalk-dim text-center truncate ${benchCaption} ${benchCaptionWidth}`}
-                      >
-                        {isActive ? `for ${coveringName}` : 'on bench'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

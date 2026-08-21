@@ -40,23 +40,38 @@ export function zoneLabel(zone) {
 export const FRONT_ROW_ZONES = [4, 3, 2];
 export const BACK_ROW_ZONES = [5, 6, 1];
 
-// Formation grid: the whole court as a 12x8 grid, 4 columns x 4 rows within
+// Formation grid: the whole court as a 15x10 grid, 5 columns x 5 rows within
 // each zone. Used for serve/receive formations - a coach can place a player
 // anywhere within their zone (or right at its edge, for realistic stacking)
-// rather than being pinned to the zone's exact center the way Base is.
-export const GRID_COLS = 12;
-export const GRID_ROWS = 8;
+// rather than being pinned to the zone's exact center the way Base is. Odd
+// (5, not 4) per zone is deliberate: it gives a true center cell/row/column,
+// so "back to their normal spot" has an exact grid cell to snap to, which an
+// even-numbered grid can't offer (the center falls between two cells).
+export const GRID_COLS = 15;
+export const GRID_ROWS = 10;
 
-/** Grid cell {col, row} -> fractional {x, y} (0-1) for rendering, centered in the cell. */
+// One extra row beyond the court's own bottom edge (the end line), the same
+// height as any other row (1/GRID_ROWS of the court's height). Lets a player
+// - most notably the server - be placed genuinely outside the court, which
+// is where a server actually stands until contact, not just at its edge.
+export const OUTSIDE_ROW = GRID_ROWS;
+
+/** Grid cell {col, row} -> fractional {x, y} (0-1 in-court, up to ~1.1 for the outside row) for rendering, centered in the cell. */
 export function gridToFraction({ col, row }) {
   return { x: (col + 0.5) / GRID_COLS, y: (row + 0.5) / GRID_ROWS };
 }
 
-/** Fractional {x, y} (0-1), e.g. from a tap position -> the grid cell it falls in. */
+/** Fractional {x, y} (0-1) within the IN-COURT area, e.g. from a tap position -> the grid cell it falls in. */
 export function fractionToGrid(x, y) {
   const col = Math.min(GRID_COLS - 1, Math.max(0, Math.floor(x * GRID_COLS)));
   const row = Math.min(GRID_ROWS - 1, Math.max(0, Math.floor(y * GRID_ROWS)));
   return { col, row };
+}
+
+/** Same idea, but for a tap within the separate "outside the end line" strip - row is always OUTSIDE_ROW. */
+export function fractionToOutsideGrid(x) {
+  const col = Math.min(GRID_COLS - 1, Math.max(0, Math.floor(x * GRID_COLS)));
+  return { col, row: OUTSIDE_ROW };
 }
 
 /** Storage key for a rotation's formation - one for serving, one for receiving. */

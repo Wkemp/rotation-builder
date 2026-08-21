@@ -8,6 +8,7 @@ import {
   ZONE_POS,
   GRID_COLS,
   GRID_ROWS,
+  OUTSIDE_ROW,
 } from '../lib/rotation';
 
 /** One small court diagram: net line, six positioned circles, and a caption
@@ -47,7 +48,7 @@ function MiniCourt({
         <span className="font-display font-semibold text-sm print:text-lg">Rotation {rotationNum}</span>
         <span className="text-[10px] text-gray-500 print:text-sm">Serving #{servingPlayer.number || '–'}</span>
       </div>
-      <div className="relative w-full aspect-[3/2] border border-black rounded mb-8">
+      <div className="relative w-full aspect-[3/2] border border-black rounded mb-10">
         {/* net: a bold line is enough at this size */}
         <div className="absolute -top-1 left-0 right-0 h-[3px] bg-black rounded-full" />
         {/* thin zone guide lines */}
@@ -63,7 +64,7 @@ function MiniCourt({
           // Same "server steps behind the end line" treatment as the
           // interactive view, for Base/Serving pages (not Receiving).
           if (isServing && !customCell && serveState !== 'receive') {
-            pos = { x: ZONE_POS[1].x, y: 1.04 };
+            pos = { x: ZONE_POS[1].x, y: (OUTSIDE_ROW + 0.5) / GRID_ROWS };
           }
           const cell = court[zone];
           const player = playerAt(cell.playerId);
