@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react';
 import {
   zoneForSlot,
   resolveCourt,
@@ -31,6 +31,7 @@ export default function CourtDiagram({
   roster,
   showZoneLabels,
   serveState = 'base',
+  showSwitch = false,
   formations = {},
   editingFormation = false,
   onPlacePlayer,
@@ -46,8 +47,17 @@ export default function CourtDiagram({
   const [diagramTab, setDiagramTab] = useState('court'); // 'court' | 'notes'
   const courtRef = useRef(null);
 
-  const activeFormation =
-    serveState !== 'base' ? formations[formationKey(rotationNum, serveState)] : null;
+  const receiveFormation = formations[formationKey(rotationNum, 'receive')];
+  // Switch ("playing position") data always exists independent of whether
+  // it's currently being viewed, since the switch badge below needs to know
+  // who switches regardless of which tab is active.
+  const switchData = formations[formationKey(rotationNum, 'receive-switch')];
+  const viewingSwitch = showSwitch && serveState === 'receive';
+  const activeFormation = viewingSwitch
+    ? switchData
+    : serveState !== 'base'
+      ? formations[formationKey(rotationNum, serveState)]
+      : null;
 
   // Position (left/top) is already percentage-based, so it scales with the
   // court box automatically. Size and text are normally fixed pixel values
@@ -212,7 +222,17 @@ export default function CourtDiagram({
             {[1, 2, 3, 4, 5, 6].map((slotNum) => {
               const zone = zoneForSlot(rotationNum, slotNum);
               const customCell = activeFormation?.[slotNum - 1];
-              let pos = customCell ? gridToFraction(customCell) : ZONE_POS[zone];
+              const hasSwitch = !!switchData?.[slotNum - 1];
+              let pos;
+              if (customCell) {
+                pos = gridToFraction(customCell);
+              } else if (viewingSwitch && receiveFormation?.[slotNum - 1]) {
+                // No switch override for this player - they stay exactly
+                // where they were for the receive formation, not Base.
+                pos = gridToFraction(receiveFormation[slotNum - 1]);
+              } else {
+                pos = ZONE_POS[zone];
+              }
               const isServing = zone === 1;
               // The server never actually stands inside zone 1 - they're
               // behind the end line until contact. Steps them back there,
@@ -258,6 +278,16 @@ export default function CourtDiagram({
                       <span
                         className={`absolute rounded-full bg-serve border-2 border-ink ${servingDot}`}
                       />
+                    )}
+                    {serveState === 'receive' && hasSwitch && (
+                      <span
+                        title="Switches after contact"
+                        className={`absolute flex items-center justify-center rounded-full bg-gold text-ink border-2 border-ink ${
+                          isFullscreen ? '-bottom-2 -left-2 w-7 h-7' : '-bottom-1.5 -left-1.5 w-5 h-5'
+                        }`}
+                      >
+                        <ArrowLeftRight size={isFullscreen ? 14 : 11} />
+                      </span>
                     )}
                   </div>
                   <span

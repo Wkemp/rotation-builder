@@ -21,6 +21,7 @@ export default function App() {
   const [view, setView] = useState('court'); // 'court' | 'cheatsheet' | 'serveorder'
   const [serveState, setServeState] = useState('base'); // 'base' | 'serve' | 'receive'
   const [editingFormation, setEditingFormation] = useState(false);
+  const [showSwitch, setShowSwitch] = useState(false); // receive -> switch (playing position)
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // While full screen: lock body scroll, and let Escape exit it - both
@@ -172,6 +173,12 @@ export default function App() {
     delete next[key];
     updateActiveRotationSet({ formations: next });
   }
+
+  // Which formation state is actually being edited right now - normally
+  // matches the Base/Serving/Receiving toggle, except when the Switch
+  // overlay is active on Receiving, which edits a separate "playing
+  // position" formation layered on top of the receive formation.
+  const formationEditState = showSwitch && serveState === 'receive' ? 'receive-switch' : serveState;
 
   // --- Rotation notes ---
 
@@ -348,6 +355,7 @@ export default function App() {
                       onClick={() => {
                         setServeState(opt.key);
                         if (opt.key === 'base') setEditingFormation(false);
+                        if (opt.key !== 'receive') setShowSwitch(false);
                       }}
                       className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
                         serveState === opt.key ? 'bg-gold text-ink' : 'text-chalk-dim'
@@ -360,11 +368,25 @@ export default function App() {
               </div>
 
               {serveState !== 'base' && (
-                <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-b border-ink-line">
+                <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-b border-ink-line flex-wrap">
+                  {serveState === 'receive' && (
+                    <button
+                      onClick={() => setShowSwitch(!showSwitch)}
+                      aria-pressed={showSwitch}
+                      title="Show playing positions after the switch, instead of the legal court positions at serve contact"
+                      className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                        showSwitch
+                          ? 'bg-gold text-ink border-gold'
+                          : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                      }`}
+                    >
+                      Switch
+                    </button>
+                  )}
                   <button
-                    onClick={() => resetFormation(current, serveState)}
-                    disabled={!formations[formationKey(current, serveState)]}
-                    title="Reset this formation to Base positions"
+                    onClick={() => resetFormation(current, formationEditState)}
+                    disabled={!formations[formationKey(current, formationEditState)]}
+                    title="Reset this formation to its default"
                     className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
                   >
                     <RotateCcw size={14} />
@@ -394,10 +416,11 @@ export default function App() {
                   roster={activeRoster.players}
                   showZoneLabels={showZoneLabels}
                   serveState={serveState}
+                  showSwitch={showSwitch}
                   formations={formations}
                   editingFormation={editingFormation && serveState !== 'base'}
                   onPlacePlayer={(slotIndex, gridCell) =>
-                    placeFormationPlayer(current, serveState, slotIndex, gridCell)
+                    placeFormationPlayer(current, formationEditState, slotIndex, gridCell)
                   }
                   isFullscreen={isFullscreen}
                   onPrevRotation={() => setCurrent(current === 1 ? 6 : current - 1)}
