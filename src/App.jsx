@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Printer, Tag, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { Printer, Tag, RotateCcw, Maximize2, Minimize2, MapPin, RotateCw, Layers, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
@@ -7,11 +7,22 @@ import CheatSheet from './components/CheatSheet';
 import ServeOrderSheet from './components/ServeOrderSheet';
 import EntitySwitcher from './components/EntitySwitcher';
 import DataTransfer from './components/DataTransfer';
+import ZonesInfo from './components/info/ZonesInfo';
+import RotationsInfo from './components/info/RotationsInfo';
+import SystemsInfo from './components/info/SystemsInfo';
+import HowToInfo from './components/info/HowToInfo';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { createInitialAppData, createEmptyRoster, createEmptyRotationSet, nextDefaultName } from './lib/appData';
 import { formationKey } from './lib/rotation';
 import { makeId } from './lib/id';
 import { exportTeamFile, exportBackupFile, parseImportPayload, remapTeamIds } from './lib/fileTransfer';
+
+const INFO_TABS = [
+  { id: 'zones', label: 'Zones', icon: MapPin, Component: ZonesInfo },
+  { id: 'rotations', label: 'Rotations', icon: RotateCw, Component: RotationsInfo },
+  { id: 'systems', label: 'Systems', icon: Layers, Component: SystemsInfo },
+  { id: 'howto', label: 'How To', icon: HelpCircle, Component: HowToInfo },
+];
 
 export default function App() {
   const [appData, setAppData] = useLocalStorage('rb.data', createInitialAppData);
@@ -22,6 +33,8 @@ export default function App() {
   const [serveState, setServeState] = useState('base'); // 'base' | 'serve' | 'receive'
   const [editingFormation, setEditingFormation] = useState(false);
   const [showSwitch, setShowSwitch] = useState(false); // receive -> switch (playing position)
+  const [infoTab, setInfoTab] = useState(null); // null | 'zones' | 'rotations' | 'systems' | 'howto'
+  const [infoBarOpen, setInfoBarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // While full screen: lock body scroll, and let Escape exit it - both
@@ -246,34 +259,84 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 flex-shrink-0">
             <button
-              onClick={() => setView('court')}
+              onClick={() => {
+                setView('court');
+                setInfoTab(null);
+              }}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'court' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Court
             </button>
             <button
-              onClick={() => setView('cheatsheet')}
+              onClick={() => {
+                setView('cheatsheet');
+                setInfoTab(null);
+              }}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'cheatsheet' ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'cheatsheet' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Cheat Sheet
             </button>
             <button
-              onClick={() => setView('serveorder')}
+              onClick={() => {
+                setView('serveorder');
+                setInfoTab(null);
+              }}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'serveorder' ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'serveorder' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Serve Order
             </button>
           </div>
         </div>
+
+        <div className="border-t border-ink-line">
+          <button
+            onClick={() => setInfoBarOpen(!infoBarOpen)}
+            className="w-full max-w-[88rem] mx-auto flex items-center justify-between gap-1.5 px-4 py-2 text-xs font-medium text-chalk-dim hover:text-chalk transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <HelpCircle size={14} /> Help &amp; Reference
+            </span>
+            {infoBarOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {infoBarOpen && (
+            <div className="max-w-[88rem] mx-auto flex items-center gap-1.5 px-4 pb-3 overflow-x-auto">
+              {INFO_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = infoTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setInfoTab(active ? null : tab.id)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 flex-shrink-0 h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                      active
+                        ? 'bg-gold text-ink border-gold'
+                        : 'bg-ink-raised text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                    }`}
+                  >
+                    <Icon size={14} /> {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </header>
 
-      {view === 'court' ? (
+      {infoTab ? (
+        <main className="max-w-2xl mx-auto p-4">
+          {(() => {
+            const ActiveInfo = INFO_TABS.find((t) => t.id === infoTab)?.Component;
+            return ActiveInfo ? <ActiveInfo /> : null;
+          })()}
+        </main>
+      ) : view === 'court' ? (
         <main className="max-w-[88rem] mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
           <section className="max-w-md mx-auto panels:flex-[0_1_28rem] panels:max-w-md panels:mx-0 space-y-5 mb-6 panels:mb-0">
             <RosterPanel
