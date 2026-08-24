@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Printer, Tag, RotateCcw, Maximize2, Minimize2, MapPin, RotateCw, Layers, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Tag, RotateCcw, Maximize2, Minimize2, MapPin, RotateCw, Layers, HelpCircle, X } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import RosterPanel from './components/RosterPanel';
@@ -34,7 +34,6 @@ export default function App() {
   const [editingFormation, setEditingFormation] = useState(false);
   const [showSwitch, setShowSwitch] = useState(false); // receive -> switch (playing position)
   const [infoTab, setInfoTab] = useState(null); // null | 'zones' | 'rotations' | 'systems' | 'howto'
-  const [infoBarOpen, setInfoBarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // While full screen: lock body scroll, and let Escape exit it - both
@@ -52,6 +51,21 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
+
+  // Same pattern for the Help modal: lock body scroll, let Escape close it.
+  useEffect(() => {
+    if (!infoTab) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setInfoTab(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [infoTab]);
 
   const activeRoster = appData.rosters[appData.activeRosterId];
   const activeSet = activeRoster.rotationSets[activeRoster.activeRotationSetId];
@@ -244,7 +258,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-ink text-chalk font-body pb-10">
       <header className="border-b border-ink-line print:hidden">
-        <div className="max-w-[88rem] mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-[88rem] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
           <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0 max-w-md">
             <EntitySwitcher
@@ -259,84 +273,88 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 flex-shrink-0">
             <button
-              onClick={() => {
-                setView('court');
-                setInfoTab(null);
-              }}
+              onClick={() => setView('court')}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'court' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Court
             </button>
             <button
-              onClick={() => {
-                setView('cheatsheet');
-                setInfoTab(null);
-              }}
+              onClick={() => setView('cheatsheet')}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'cheatsheet' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'cheatsheet' ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Cheat Sheet
             </button>
             <button
-              onClick={() => {
-                setView('serveorder');
-                setInfoTab(null);
-              }}
+              onClick={() => setView('serveorder')}
               className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-                view === 'serveorder' && !infoTab ? 'bg-gold text-ink' : 'text-chalk-dim'
+                view === 'serveorder' ? 'bg-gold text-ink' : 'text-chalk-dim'
               }`}
             >
               Serve Order
             </button>
           </div>
-        </div>
-
-        <div className="border-t border-ink-line">
           <button
-            onClick={() => setInfoBarOpen(!infoBarOpen)}
-            className="w-full max-w-[88rem] mx-auto flex items-center justify-between gap-1.5 px-4 py-2 text-xs font-medium text-chalk-dim hover:text-chalk transition-colors"
+            onClick={() => setInfoTab('zones')}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium border border-ink-line bg-ink-raised text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors flex-shrink-0"
           >
-            <span className="flex items-center gap-1.5">
-              <HelpCircle size={14} /> Help &amp; Reference
-            </span>
-            {infoBarOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <HelpCircle size={16} /> Help
           </button>
-          {infoBarOpen && (
-            <div className="max-w-[88rem] mx-auto flex items-center gap-1.5 px-4 pb-3 overflow-x-auto">
-              {INFO_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const active = infoTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setInfoTab(active ? null : tab.id)}
-                    aria-pressed={active}
-                    className={`flex items-center gap-1.5 flex-shrink-0 h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
-                      active
-                        ? 'bg-gold text-ink border-gold'
-                        : 'bg-ink-raised text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                    }`}
-                  >
-                    <Icon size={14} /> {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
       </header>
 
-      {infoTab ? (
-        <main className="max-w-2xl mx-auto p-4">
-          {(() => {
-            const ActiveInfo = INFO_TABS.find((t) => t.id === infoTab)?.Component;
-            return ActiveInfo ? <ActiveInfo /> : null;
-          })()}
-        </main>
-      ) : view === 'court' ? (
+      {infoTab && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => setInfoTab(null)}
+        >
+          <div
+            className="bg-ink border border-ink-line rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-ink-line flex-shrink-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {INFO_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const active = infoTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setInfoTab(tab.id)}
+                      aria-pressed={active}
+                      className={`flex items-center gap-1.5 flex-shrink-0 h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                        active
+                          ? 'bg-gold text-ink border-gold'
+                          : 'bg-ink-raised text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                      }`}
+                    >
+                      <Icon size={14} /> {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setInfoTab(null)}
+                aria-label="Close"
+                className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex-shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              {(() => {
+                const ActiveInfo = INFO_TABS.find((t) => t.id === infoTab)?.Component;
+                return ActiveInfo ? <ActiveInfo /> : null;
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'court' ? (
         <main className="max-w-[88rem] mx-auto p-4 panels:flex panels:gap-6 panels:items-start">
           <section className="max-w-md mx-auto panels:flex-[0_1_28rem] panels:max-w-md panels:mx-0 space-y-5 mb-6 panels:mb-0">
             <RosterPanel

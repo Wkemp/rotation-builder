@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Plus, Trash2, Copy, Check, X } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Trash2, Copy, Check, X } from 'lucide-react';
 
 export default function EntitySwitcher({
   items, // object keyed by id: { id, name, ...}
@@ -13,6 +13,7 @@ export default function EntitySwitcher({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef(null);
 
   const list = Object.values(items);
@@ -25,12 +26,23 @@ export default function EntitySwitcher({
   function startRename() {
     setDraft(active?.name || '');
     setEditing(true);
+    setMenuOpen(false);
   }
 
   function commit() {
     const trimmed = draft.trim();
     if (trimmed) onRename(activeId, trimmed);
     setEditing(false);
+  }
+
+  function handleCreate() {
+    onCreate();
+    setMenuOpen(false);
+  }
+
+  function handleDuplicate() {
+    onDuplicate(activeId);
+    setMenuOpen(false);
   }
 
   function handleDelete() {
@@ -78,29 +90,45 @@ export default function EntitySwitcher({
           </option>
         ))}
       </select>
-      <button
-        onClick={startRename}
-        className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex-shrink-0"
-        aria-label={`Rename ${label.toLowerCase()}`}
-      >
-        <Pencil size={16} />
-      </button>
-      <button
-        onClick={onCreate}
-        className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex-shrink-0"
-        aria-label={`New ${label.toLowerCase()}`}
-      >
-        <Plus size={16} />
-      </button>
-      {onDuplicate && (
+
+      <div className="relative flex-shrink-0">
         <button
-          onClick={() => onDuplicate(activeId)}
-          className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex-shrink-0"
-          aria-label={`Duplicate ${label.toLowerCase()}`}
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label={`${label} options`}
+          aria-expanded={menuOpen}
+          className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex items-center justify-center"
         >
-          <Copy size={16} />
+          <MoreHorizontal size={16} />
         </button>
-      )}
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="absolute right-0 top-full mt-1 z-50 bg-ink-raised border border-ink-line rounded-lg shadow-lg py-1 min-w-[10rem]">
+              <button
+                onClick={startRename}
+                className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+              >
+                <Pencil size={14} /> Rename
+              </button>
+              <button
+                onClick={handleCreate}
+                className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+              >
+                <Plus size={14} /> New {label.toLowerCase()}
+              </button>
+              {onDuplicate && (
+                <button
+                  onClick={handleDuplicate}
+                  className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+                >
+                  <Copy size={14} /> Duplicate
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       <button
         onClick={handleDelete}
         disabled={list.length <= 1}
