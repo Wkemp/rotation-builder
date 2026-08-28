@@ -259,7 +259,7 @@ export default function App() {
     <div className="min-h-screen bg-ink text-chalk font-body pb-10">
       <header className="border-b border-ink-line print:hidden">
         <div className="max-w-[88rem] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
-          <div className="w-8 h-8 rounded bg-gold/90 flex-shrink-0" aria-hidden="true" />
+          <img src={`${import.meta.env.BASE_URL}icons/logo-header.png`} alt="Rotation Builder" className="w-8 h-8 rounded flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0 max-w-md">
             <EntitySwitcher
               items={appData.rosters}
@@ -301,7 +301,8 @@ export default function App() {
             onClick={() => setInfoTab('zones')}
             className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium border border-ink-line bg-ink-raised text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors flex-shrink-0"
           >
-            <HelpCircle size={16} /> Help
+            <img src={`${import.meta.env.BASE_URL}icons/help.png`} alt="Help" className="w-4 h-4" />
+            Help
           </button>
         </div>
       </header>
