@@ -1,11 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource/oswald/latin-500.css";
-@import "@fontsource/oswald/latin-600.css";
-@import "@fontsource/oswald/latin-700.css";
-@import "@fontsource/inter/latin-400.css";
-@import "@fontsource/inter/latin-500.css";
-@import "@fontsource/inter/latin-600.css";
-@import "@fontsource/ibm-plex-mono/latin-500.css";
 
 @theme {
   --color-ink: #14181d;
@@ -16,70 +9,49 @@
   --color-gold: #e8b23d;
   --color-gold-dim: #a87f2c;
   --color-court-line: #3e6e8e;
-  --color-back-row: #6d7686;
-  --color-serve: #c1473a;
   --color-sub: #4f9d69;
+  --color-serve: #c1473a;
 
-  --font-display: 'Oswald', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-data: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: "Oswald", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  --font-data: "IBM Plex Mono", monospace;
 
   /* Custom breakpoint for the court/roster layout, not a generic screen-size
      tier. Set to 64rem (1024px) - the landscape width of even the smallest
-     current iPad (iPad Mini), which is the primary device this app targets.
-     Below this, side-by-side genuinely doesn't fit comfortably; at and
-     above it, the two sections switch from stacked to a flexible row (see
-     App.jsx) that shrinks to fit an iPad and grows up to court's 56rem /
-     roster's 28rem caps on larger screens. */
+     current iPad (iPad Mini), which is the primary device this app targets. */
   --breakpoint-panels: 64rem;
+
+  /* Custom breakpoint for the left/right slide-out popups: above this width,
+     a popup pushes the court diagram over so both are visible side by side;
+     below it, there isn't reliably enough room for that, so the popup
+     overlays on top of the court instead. ~24rem popup + ~30rem minimum
+     usable court + gaps/padding informed this number, same reasoning as the
+     panels breakpoint above but for a different pair of widths. */
+  --breakpoint-popup: 60rem;
 }
 
-html, body, #root {
-  height: 100%;
-}
-
-body {
-  background: var(--color-ink);
-  color: var(--color-chalk);
-  font-family: var(--font-body);
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain;
-  /* Landscape-locked app: on a notched phone held sideways, the notch sits
-     on the left or right, not the top - pad the whole page for it. */
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-/* Baseline safety net: any input/select smaller than 16px makes iOS Safari
-   auto-zoom the whole page on focus, which is jarring mid-game. Utility
-   classes on individual elements can still override this where genuinely
-   safe (e.g. a checkbox), but this catches anything missed. */
 @layer base {
+  html, body {
+    background: var(--color-ink);
+    color: var(--color-chalk);
+    font-family: var(--font-sans);
+    margin: 0;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Prevents iOS Safari's automatic zoom on focusing an input with a
+     font-size under 16px. */
   input, select, textarea {
     font-size: 16px;
   }
-}
 
-/* Buttons and form controls: remove the ~300ms tap delay and stop
-   double-tap-to-zoom from firing on repeated quick taps during a game. */
-button, a, label, input, select {
-  touch-action: manipulation;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+  button, label, input, select {
+    touch-action: manipulation;
   }
 }
 
-/* Printable sheets (cheat sheet, serve order): only the active one prints,
-   everything else hides */
 @media print {
   @page {
     size: landscape;

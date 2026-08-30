@@ -38,36 +38,40 @@ export function createEmptyRoster(name = 'My Team') {
 export function nextDefaultName(collection, base) {
   const existingNames = new Set(Object.values(collection).map((item) => item.name));
   if (!existingNames.has(base)) return base;
-  let i = 2;
-  while (existingNames.has(`${base} ${i}`)) i++;
-  return `${base} ${i}`;
+  let n = 2;
+  while (existingNames.has(`${base} ${n}`)) n++;
+  return `${base} ${n}`;
 }
 
-const OLD_KEYS = ['rb.teamName', 'rb.roster', 'rb.slots', 'rb.liberos'];
-
-function readOldKey(key) {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw !== null ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Builds the initial app state. If pre-multi-roster localStorage keys exist,
- * migrate them into a single roster ("My Team" / whatever the old team name
- * was) with one rotation set ("Default") so existing data isn't lost.
- * Otherwise start fresh with one empty roster.
- */
 export function createInitialAppData() {
-  const oldTeamName = readOldKey('rb.teamName');
-  const oldRoster = readOldKey('rb.roster');
-  const oldSlots = readOldKey('rb.slots');
-  const oldLiberos = readOldKey('rb.liberos');
-  const hasOldData = oldTeamName || oldRoster || oldSlots || oldLiberos;
+  // Migrate any pre-existing flat localStorage keys from the very first
+  // single-team version of this app, if present.
+  const oldTeamName = localStorage.getItem('rb.teamName');
+  const oldRosterRaw = localStorage.getItem('rb.roster');
+  const oldSlotsRaw = localStorage.getItem('rb.slots');
+  const oldLiberosRaw = localStorage.getItem('rb.liberos');
 
-  if (hasOldData) {
+  if (oldTeamName || oldRosterRaw) {
+    let oldPlayers = {};
+    try {
+      const parsed = oldRosterRaw ? JSON.parse(oldRosterRaw) : [];
+      for (const p of parsed) oldPlayers[p.id] = p;
+    } catch {
+      oldPlayers = {};
+    }
+    let oldSlots = null;
+    try {
+      oldSlots = oldSlotsRaw ? JSON.parse(oldSlotsRaw) : null;
+    } catch {
+      oldSlots = null;
+    }
+    let oldLiberos = [];
+    try {
+      oldLiberos = oldLiberosRaw ? JSON.parse(oldLiberosRaw) : [];
+    } catch {
+      oldLiberos = [];
+    }
+
     const rotationSet = {
       id: makeId('set_'),
       name: 'Default',
@@ -78,23 +82,16 @@ export function createInitialAppData() {
       formations: {},
       rotationNotes: {},
     };
-    const roster = {
+    const team = {
       id: makeId('team_'),
       name: oldTeamName || 'My Team',
-      players: oldRoster || {},
+      players: oldPlayers,
       rotationSets: { [rotationSet.id]: rotationSet },
       activeRotationSetId: rotationSet.id,
     };
-    OLD_KEYS.forEach((k) => {
-      try {
-        window.localStorage.removeItem(k);
-      } catch {
-        // ignore - worst case the stale key just sits there unused
-      }
-    });
-    return { rosters: { [roster.id]: roster }, activeRosterId: roster.id };
+    return { rosters: { [team.id]: team }, activeRosterId: team.id };
   }
 
-  const roster = createEmptyRoster('My Team');
-  return { rosters: { [roster.id]: roster }, activeRosterId: roster.id };
+  const team = createEmptyRoster('My Team');
+  return { rosters: { [team.id]: team }, activeRosterId: team.id };
 }

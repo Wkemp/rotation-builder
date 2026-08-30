@@ -1,5 +1,3 @@
-// Builds the display order of the 6 buttons starting from `startRotation`,
-// while each button still shows and selects its TRUE rotation number.
 function orderedRotations(startRotation) {
   const order = [];
   for (let i = 0; i < 6; i++) {

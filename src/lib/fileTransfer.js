@@ -1,30 +1,18 @@
-import { makeId } from './id';
-import { liberoTargets, liberoServesFor } from './rotation';
+import { makeId, makePlayerId } from './id';
 
-const APP_TAG = 'rotation-builder';
-const FORMAT_VERSION = 1;
-
-function slugify(name) {
-  return (
-    (name || 'export')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || 'export'
-  );
+export function exportTeamFile(team) {
+  const payload = { app: 'rotation-builder', version: 1, exportType: 'team', teams: [team] };
+  downloadJson(payload, `${slugify(team.name)}-team.json`);
 }
 
-function buildPayload(teams, exportType) {
-  return {
-    app: APP_TAG,
-    version: FORMAT_VERSION,
-    exportType, // 'team' | 'backup' - informational only, import handles both identically
-    exportedAt: new Date().toISOString(),
-    teams,
-  };
+export function exportBackupFile(appData) {
+  const teams = Object.values(appData.rosters);
+  const payload = { app: 'rotation-builder', version: 1, exportType: 'backup', teams };
+  downloadJson(payload, `rotation-builder-backup.json`);
 }
 
-export function downloadJSON(data, filename) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+function downloadJson(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -35,67 +23,50 @@ export function downloadJSON(data, filename) {
   URL.revokeObjectURL(url);
 }
 
-export function exportTeamFile(team) {
-  downloadJSON(buildPayload([team], 'team'), `${slugify(team.name)}-rotation-export.json`);
+function slugify(name) {
+  return (name || 'team').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-export function exportBackupFile(rostersById) {
-  const teams = Object.values(rostersById);
-  const dateStr = new Date().toISOString().slice(0, 10);
-  downloadJSON(buildPayload(teams, 'backup'), `rotation-builder-backup-${dateStr}.json`);
-}
-
-/** Parses and sanity-checks an imported file's text. Throws a user-readable Error if invalid. */
 export function parseImportPayload(text) {
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error("That file isn't valid JSON.");
+  const data = JSON.parse(text);
+  if (!data || !Array.isArray(data.teams)) {
+    throw new Error("This file doesn't look like a Rotation Builder export.");
   }
-  if (!json || json.app !== APP_TAG || !Array.isArray(json.teams) || json.teams.length === 0) {
-    throw new Error("That doesn't look like a Rotation Builder export file.");
-  }
-  const sample = json.teams[0];
-  if (!sample.players || !sample.rotationSets || !sample.activeRotationSetId) {
-    throw new Error('The file is missing expected data and may be corrupted.');
-  }
-  return json;
+  return data;
 }
 
-/**
- * Returns a copy of `team` with every id (team, players, rotation sets)
- * freshly generated, and every internal reference (slots, libero targets,
- * activeRotationSetId) rewritten to match. Never trusts ids from the file -
- * imported data always gets a clean, locally-unique identity.
- */
+/** Remaps every id in an imported team to fresh local ids, so importing
+ * never collides with anything already on this device. */
 export function remapTeamIds(team) {
   const playerIdMap = {};
   const newPlayers = {};
-  for (const oldId of Object.keys(team.players)) {
-    const newId = makeId('p');
-    playerIdMap[oldId] = newId;
-    newPlayers[newId] = { ...team.players[oldId], id: newId };
+  for (const player of Object.values(team.players || {})) {
+    const newId = makePlayerId();
+    playerIdMap[player.id] = newId;
+    newPlayers[newId] = { ...player, id: newId };
   }
 
-  const setIdMap = {};
   const newRotationSets = {};
-  for (const oldSetId of Object.keys(team.rotationSets)) {
+  let newActiveRotationSetId = null;
+  for (const oldSet of Object.values(team.rotationSets || {})) {
     const newSetId = makeId('set_');
-    setIdMap[oldSetId] = newSetId;
-    const oldSet = team.rotationSets[oldSetId];
-    newRotationSets[newSetId] = {
-      ...oldSet,
+    if (oldSet.id === team.activeRotationSetId) newActiveRotationSetId = newSetId;
+
+    const newSet = {
       id: newSetId,
-      slots: oldSet.slots.map((pid) => (pid ? playerIdMap[pid] || null : null)),
-      liberos: (oldSet.liberos || []).map((l) => {
-        const servesFor = liberoServesFor(l);
-        return {
-          playerId: playerIdMap[l.playerId] || l.playerId,
-          forPlayerIds: liberoTargets(l).map((tid) => playerIdMap[tid] || tid),
-          servesForPlayerId: servesFor ? playerIdMap[servesFor] || null : null,
-        };
-      }),
+      name: oldSet.name,
+      slots: (oldSet.slots || []).map((pid) => (pid ? playerIdMap[pid] || null : null)),
+      liberos: (oldSet.liberos || []).map((l) => ({
+        playerId: playerIdMap[l.playerId] || l.playerId,
+        forPlayerIds: (l.forPlayerIds || (l.forPlayerId ? [l.forPlayerId] : [])).map(
+          (pid) => playerIdMap[pid] || pid
+        ),
+        servesForPlayerId: l.servesForPlayerId
+          ? playerIdMap[l.servesForPlayerId] || l.servesForPlayerId
+          : l.canServe && l.forPlayerId
+            ? playerIdMap[l.forPlayerId] || l.forPlayerId
+            : null,
+      })),
       substitutions: (oldSet.substitutions || []).map((s) => ({
         ...s,
         id: makeId('sub_'),
@@ -108,7 +79,10 @@ export function remapTeamIds(team) {
           playerIdMap[serverId] || serverId,
         ])
       ),
+      formations: oldSet.formations || {},
+      rotationNotes: oldSet.rotationNotes || {},
     };
+    newRotationSets[newSetId] = newSet;
   }
 
   return {
@@ -116,6 +90,6 @@ export function remapTeamIds(team) {
     name: team.name,
     players: newPlayers,
     rotationSets: newRotationSets,
-    activeRotationSetId: setIdMap[team.activeRotationSetId] || Object.keys(newRotationSets)[0],
+    activeRotationSetId: newActiveRotationSetId || Object.keys(newRotationSets)[0],
   };
 }
