@@ -27,7 +27,7 @@ export default function HelpContent() {
               key={t.id}
               onClick={() => setTab(t.id)}
               aria-pressed={active}
-              className={`flex items-center gap-1.5 flex-shrink-0 h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+              className={`flex items-center gap-1.5 flex-shrink-0 h-11 px-3 rounded-lg text-xs font-medium border transition-colors ${
                 active
                   ? 'bg-gold text-ink border-gold'
                   : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'

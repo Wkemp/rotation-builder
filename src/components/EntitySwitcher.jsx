@@ -64,13 +64,21 @@ export default function EntitySwitcher({
             if (e.key === 'Enter') commit();
             if (e.key === 'Escape') setEditing(false);
           }}
-          className="flex-1 min-w-0 bg-ink-raised border border-gold rounded px-2 py-1.5"
+          className="flex-1 min-w-0 h-11 bg-ink-raised border border-gold rounded px-2"
         />
-        <button onClick={commit} className="p-2 -m-2 text-gold" aria-label="Save name">
-          <Check size={18} />
+        <button
+          onClick={commit}
+          className="flex items-center justify-center w-11 h-11 -m-1.5 rounded-full text-gold hover:bg-ink-raised transition-colors flex-shrink-0"
+          aria-label="Save name"
+        >
+          <Check size={20} />
         </button>
-        <button onClick={() => setEditing(false)} className="p-2 -m-2 text-chalk-dim" aria-label="Cancel rename">
-          <X size={18} />
+        <button
+          onClick={() => setEditing(false)}
+          className="flex items-center justify-center w-11 h-11 -m-1.5 rounded-full text-chalk-dim hover:bg-ink-raised transition-colors flex-shrink-0"
+          aria-label="Cancel rename"
+        >
+          <X size={20} />
         </button>
       </div>
     );
@@ -82,7 +90,7 @@ export default function EntitySwitcher({
       <select
         value={activeId}
         onChange={(e) => onSwitch(e.target.value)}
-        className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-2 py-1.5 text-chalk truncate"
+        className="flex-1 min-w-0 h-11 bg-ink-raised border border-ink-line rounded px-2 text-chalk truncate"
       >
         {list.map((item) => (
           <option key={item.id} value={item.id}>
@@ -96,9 +104,9 @@ export default function EntitySwitcher({
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={`${label} options`}
           aria-expanded={menuOpen}
-          className="p-2 -m-2 text-chalk-dim hover:text-chalk transition-colors flex items-center justify-center"
+          className="flex items-center justify-center w-11 h-11 -m-1.5 rounded-full text-chalk-dim hover:text-chalk hover:bg-ink-raised transition-colors"
         >
-          <MoreHorizontal size={16} />
+          <MoreHorizontal size={18} />
         </button>
         {menuOpen && (
           <>
@@ -106,20 +114,20 @@ export default function EntitySwitcher({
             <div className="absolute right-0 top-full mt-1 z-50 bg-ink-raised border border-ink-line rounded-lg shadow-lg py-1 min-w-[10rem]">
               <button
                 onClick={startRename}
-                className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+                className="w-full flex items-center gap-2 px-3 h-11 text-sm text-chalk hover:bg-ink transition-colors text-left"
               >
                 <Pencil size={14} /> Rename
               </button>
               <button
                 onClick={handleCreate}
-                className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+                className="w-full flex items-center gap-2 px-3 h-11 text-sm text-chalk hover:bg-ink transition-colors text-left"
               >
                 <Plus size={14} /> New {label.toLowerCase()}
               </button>
               {onDuplicate && (
                 <button
                   onClick={handleDuplicate}
-                  className="w-full flex items-center gap-2 px-3 py-3 text-sm text-chalk hover:bg-ink transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 h-11 text-sm text-chalk hover:bg-ink transition-colors text-left"
                 >
                   <Copy size={14} /> Duplicate
                 </button>
@@ -132,10 +140,10 @@ export default function EntitySwitcher({
       <button
         onClick={handleDelete}
         disabled={list.length <= 1}
-        className="p-2 -m-2 text-chalk-dim hover:text-serve transition-colors flex-shrink-0 disabled:opacity-30 disabled:pointer-events-none"
+        className="flex items-center justify-center w-11 h-11 -m-1.5 rounded-full text-chalk-dim hover:text-serve hover:bg-ink-raised transition-colors flex-shrink-0 disabled:opacity-30 disabled:pointer-events-none"
         aria-label={`Delete ${label.toLowerCase()}`}
       >
-        <Trash2 size={16} />
+        <Trash2 size={18} />
       </button>
     </div>
   );

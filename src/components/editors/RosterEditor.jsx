@@ -39,19 +39,19 @@ export default function RosterEditor({ players, onAddPlayer, onUpdatePlayer, onR
           value={newNumber}
           onChange={(e) => setNewNumber(e.target.value)}
           placeholder="#"
-          className="w-14 bg-ink-raised border border-ink-line rounded px-2 py-2 font-data text-center"
+          className="w-14 h-11 bg-ink-raised border border-ink-line rounded px-2 font-data text-center"
         />
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
           placeholder="Player name"
-          className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-2 py-2"
+          className="flex-1 min-w-0 h-11 bg-ink-raised border border-ink-line rounded px-2"
         />
         <select
           value={newPosition}
           onChange={(e) => setNewPosition(e.target.value)}
-          className="w-24 bg-ink-raised border border-ink-line rounded px-1 py-2 text-chalk-dim"
+          className="w-24 h-11 bg-ink-raised border border-ink-line rounded px-1 text-chalk-dim"
           title="Position"
         >
           <option value="">Pos</option>
@@ -70,23 +70,23 @@ export default function RosterEditor({ players, onAddPlayer, onUpdatePlayer, onR
         </button>
       </div>
 
-      <ul className="space-y-1.5 max-h-[28rem] overflow-y-auto pr-1">
+      <ul className="space-y-1.5">
         {list.map((p) => (
-          <li key={p.id} className="flex items-center gap-2 bg-ink-raised rounded px-2 py-2 text-sm">
+          <li key={p.id} className="flex items-center gap-2 bg-ink-raised rounded px-2 py-1.5 text-sm">
             <input
               value={p.number || ''}
               onChange={(e) => onUpdatePlayer(p.id, { number: e.target.value })}
-              className="w-10 flex-shrink-0 bg-ink border border-ink-line rounded px-1 py-1.5 font-data text-gold text-center"
+              className="w-11 h-11 flex-shrink-0 bg-ink border border-ink-line rounded px-1 font-data text-gold text-center"
             />
             <input
               value={p.name}
               onChange={(e) => onUpdatePlayer(p.id, { name: e.target.value })}
-              className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-1.5 truncate"
+              className="flex-1 min-w-0 h-11 bg-ink border border-ink-line rounded px-1.5 truncate"
             />
             <select
               value={p.position || ''}
               onChange={(e) => onUpdatePlayer(p.id, { position: e.target.value })}
-              className="w-20 flex-shrink-0 bg-ink border border-ink-line rounded px-1 py-1.5 text-chalk-dim"
+              className="w-20 h-11 flex-shrink-0 bg-ink border border-ink-line rounded px-1 text-chalk-dim"
               title="Position"
             >
               <option value="">—</option>
@@ -98,10 +98,10 @@ export default function RosterEditor({ players, onAddPlayer, onUpdatePlayer, onR
             </select>
             <button
               onClick={() => onRemovePlayer(p.id)}
-              className="text-chalk-dim hover:text-serve transition-colors flex-shrink-0 p-2 -m-2"
+              className="flex items-center justify-center w-11 h-11 flex-shrink-0 rounded-full text-chalk-dim hover:text-serve hover:bg-ink transition-colors"
               aria-label={`Remove ${p.name}`}
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </li>
         ))}

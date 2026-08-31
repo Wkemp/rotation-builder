@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeftRight, Maximize2, Minimize2, Tag, RotateCcw } from 'lucide-react';
 import {
   zoneForSlot,
   resolveCourt,
@@ -30,12 +30,17 @@ export default function CourtDiagram({
   substitutionServers = {},
   roster,
   showZoneLabels,
+  onToggleZoneLabels,
   serveState = 'base',
   showSwitch = false,
   formations = {},
   editingFormation = false,
+  onToggleEditingFormation,
+  onResetFormation,
+  canReset = false,
   onPlacePlayer,
   isFullscreen = false,
+  onToggleFullscreen,
   onPrevRotation,
   onNextRotation,
   note = '',
@@ -112,27 +117,89 @@ export default function CourtDiagram({
 
   return (
     <div className="w-full select-none">
-      {onUpdateNote && (
-        <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 mb-3 w-fit">
-          <button
-            onClick={() => setDiagramTab('court')}
-            className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
-              diagramTab === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
-            }`}
-          >
-            Court
-          </button>
-          <button
-            onClick={() => setDiagramTab('notes')}
-            className={`h-9 px-3 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              diagramTab === 'notes' ? 'bg-gold text-ink' : 'text-chalk-dim'
-            }`}
-          >
-            Notes
-            {note && <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />}
-          </button>
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        {onUpdateNote ? (
+          <div className="flex items-center gap-1 bg-ink-raised rounded-lg p-1 w-fit">
+            <button
+              onClick={() => setDiagramTab('court')}
+              className={`h-11 px-3 rounded text-sm font-medium transition-colors ${
+                diagramTab === 'court' ? 'bg-gold text-ink' : 'text-chalk-dim'
+              }`}
+            >
+              Court
+            </button>
+            <button
+              onClick={() => setDiagramTab('notes')}
+              className={`h-11 px-3 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                diagramTab === 'notes' ? 'bg-gold text-ink' : 'text-chalk-dim'
+              }`}
+            >
+              Notes
+              {note && <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />}
+            </button>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+              className={`flex items-center justify-center w-11 h-11 rounded-full border transition-colors ${
+                isFullscreen
+                  ? 'bg-gold text-ink border-gold'
+                  : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+              }`}
+            >
+              {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+            </button>
+          )}
+          {onToggleZoneLabels && (
+            <button
+              onClick={onToggleZoneLabels}
+              aria-pressed={showZoneLabels}
+              title="Zone labels"
+              className={`flex items-center justify-center w-11 h-11 rounded-full border transition-colors ${
+                showZoneLabels
+                  ? 'bg-gold text-ink border-gold'
+                  : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+              }`}
+            >
+              <Tag size={17} />
+            </button>
+          )}
+          {serveState !== 'base' && (
+            <>
+              {onResetFormation && (
+                <button
+                  onClick={onResetFormation}
+                  disabled={!canReset}
+                  title="Reset this formation to its default"
+                  className="flex items-center gap-1.5 h-11 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <RotateCcw size={14} />
+                  <span className="hidden sm:inline">Reset</span>
+                </button>
+              )}
+              {onToggleEditingFormation && (
+                <button
+                  onClick={onToggleEditingFormation}
+                  aria-pressed={editingFormation}
+                  className={`h-11 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                    editingFormation
+                      ? 'bg-gold text-ink border-gold'
+                      : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
+                  }`}
+                >
+                  {editingFormation ? 'Done' : 'Edit'}
+                </button>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {(!onUpdateNote || diagramTab === 'court') && (
         <>

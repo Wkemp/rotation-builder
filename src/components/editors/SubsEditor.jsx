@@ -87,7 +87,7 @@ export default function SubsEditor({
           <select
             value={newSubPlayerId}
             onChange={(e) => setNewSubPlayerId(e.target.value)}
-            className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-2 text-base text-chalk truncate"
+            className="flex-1 min-w-0 h-11 bg-ink border border-ink-line rounded px-1.5 text-base text-chalk truncate"
           >
             <option value="">Sub player…</option>
             {subPlayerOptionsFor(newForPlayerId).map((p) => (
@@ -100,7 +100,7 @@ export default function SubsEditor({
           <select
             value={newForPlayerId}
             onChange={(e) => setNewForPlayerId(e.target.value)}
-            className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-2 text-base text-chalk truncate"
+            className="flex-1 min-w-0 h-11 bg-ink border border-ink-line rounded px-1.5 text-base text-chalk truncate"
           >
             <option value="">Starter…</option>
             {starterIds.map((id) => (
@@ -116,7 +116,7 @@ export default function SubsEditor({
             <button
               key={r}
               onClick={() => toggleRotation(r)}
-              className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
+              className={`w-11 h-11 rounded text-xs font-medium transition-colors flex-shrink-0 ${
                 newSubRotations.includes(r) ? 'bg-gold text-ink' : 'bg-ink text-chalk-dim border border-ink-line'
               }`}
             >
@@ -128,7 +128,7 @@ export default function SubsEditor({
         <button
           onClick={addSubstitution}
           disabled={!newSubPlayerId || !newForPlayerId}
-          className="w-full h-9 rounded-lg bg-gold text-ink text-sm font-medium hover:bg-gold-dim transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          className="w-full h-11 rounded-lg bg-gold text-ink text-sm font-medium hover:bg-gold-dim transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
           Add Substitution
         </button>
@@ -144,7 +144,7 @@ export default function SubsEditor({
                 <div className="font-medium text-chalk">{players[starterId]?.name || '—'}</div>
                 <ul className="space-y-1 pl-2 border-l-2 border-ink-line">
                   {entries.map((s) => (
-                    <li key={s.id} className="flex items-start justify-between gap-2">
+                    <li key={s.id} className="flex items-center justify-between gap-2">
                       <div>
                         <span className="text-chalk">{players[s.subPlayerId]?.name || '—'}</span>
                         <span className="text-chalk-dim">
@@ -156,10 +156,10 @@ export default function SubsEditor({
                       </div>
                       <button
                         onClick={() => removeSubstitution(s.id)}
-                        className="text-chalk-dim hover:text-serve transition-colors flex-shrink-0 p-2 -m-2"
+                        className="flex items-center justify-center w-11 h-11 -m-1.5 flex-shrink-0 rounded-full text-chalk-dim hover:text-serve hover:bg-ink transition-colors"
                         aria-label="Remove substitution"
                       >
-                        <X size={14} />
+                        <X size={16} />
                       </button>
                     </li>
                   ))}
@@ -169,7 +169,7 @@ export default function SubsEditor({
                   <select
                     value={currentServer}
                     onChange={(e) => updateSubstitutionServer(starterId, e.target.value)}
-                    className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-1.5 text-chalk truncate"
+                    className="flex-1 min-w-0 h-11 bg-ink border border-ink-line rounded px-1.5 text-chalk truncate"
                   >
                     {groupMembers.map((id) => (
                       <option key={id} value={id}>

@@ -78,10 +78,10 @@ export default function LiberoEditor({ players, slots, liberos, onUpdateLiberos 
                 <span className="font-medium text-chalk">{liberoPlayer?.name || '—'}</span>
                 <button
                   onClick={() => removeLibero(libero.playerId)}
-                  className="text-chalk-dim hover:text-serve transition-colors p-2 -m-2"
+                  className="flex items-center justify-center w-11 h-11 -m-1.5 -mr-2 rounded-full text-chalk-dim hover:text-serve hover:bg-ink transition-colors flex-shrink-0"
                   aria-label={`Remove libero ${liberoPlayer?.name || ''}`}
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 
@@ -94,7 +94,7 @@ export default function LiberoEditor({ players, slots, liberos, onUpdateLiberos 
                       <button
                         key={p.id}
                         onClick={() => toggleTarget(libero, p.id)}
-                        className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                        className={`h-11 px-3 rounded-lg text-xs font-medium border transition-colors ${
                           active
                             ? 'bg-court-line text-chalk border-court-line'
                             : 'bg-ink text-chalk-dim border-ink-line hover:border-court-line/50'
@@ -113,7 +113,7 @@ export default function LiberoEditor({ players, slots, liberos, onUpdateLiberos 
                   <select
                     value={libero.servesForPlayerId || ''}
                     onChange={(e) => setServesFor(libero, e.target.value)}
-                    className="flex-1 min-w-0 bg-ink border border-ink-line rounded px-1.5 py-1.5 text-chalk truncate"
+                    className="flex-1 min-w-0 h-11 bg-ink border border-ink-line rounded px-1.5 text-chalk truncate"
                   >
                     <option value="">Never (can't serve)</option>
                     {covered.map((id) => (
@@ -134,7 +134,7 @@ export default function LiberoEditor({ players, slots, liberos, onUpdateLiberos 
           <select
             value={newLiberoId}
             onChange={(e) => setNewLiberoId(e.target.value)}
-            className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-2 py-2 text-chalk truncate"
+            className="flex-1 min-w-0 h-11 bg-ink-raised border border-ink-line rounded px-2 text-chalk truncate"
           >
             <option value="">Add a libero…</option>
             {availableForLibero.map((p) => (

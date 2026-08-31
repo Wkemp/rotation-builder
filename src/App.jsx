@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react';
-import {
-  Printer,
-  Tag,
-  RotateCcw,
-  Maximize2,
-  Minimize2,
-  Users as UsersIcon,
-} from 'lucide-react';
+import { Printer, Users as UsersIcon } from 'lucide-react';
 import CourtDiagram from './components/CourtDiagram';
 import RotationSelector from './components/RotationSelector';
 import CheatSheet from './components/CheatSheet';
 import ServeOrderSheet from './components/ServeOrderSheet';
 import SlideOutPopup from './components/SlideOutPopup';
+import CenteredModal from './components/CenteredModal';
 import LeftPanelContent from './components/LeftPanelContent';
-import RightMenu, { MENU_ITEMS } from './components/RightMenu';
+import RightIconRail, { RAIL_ITEMS } from './components/RightIconRail';
 import HelpContent from './components/HelpContent';
 import DataTransfer from './components/DataTransfer';
 import RosterEditor from './components/editors/RosterEditor';
@@ -25,6 +19,8 @@ import { createInitialAppData, createEmptyRoster, createEmptyRotationSet, nextDe
 import { formationKey } from './lib/rotation';
 import { makeId, makePlayerId } from './lib/id';
 import { exportTeamFile, exportBackupFile, parseImportPayload, remapTeamIds } from './lib/fileTransfer';
+
+const CENTERED_MODAL_IDS = ['cheatsheet', 'howto', 'serveorder'];
 
 export default function App() {
   const [appData, setAppData] = useLocalStorage('rb.data', createInitialAppData);
@@ -45,7 +41,7 @@ export default function App() {
     setLeftPanelOpen(true);
   }
 
-  function handleMenuSelect(id) {
+  function handleRailSelect(id) {
     setLeftPanelOpen(false);
     setActivePopup(id);
   }
@@ -244,9 +240,10 @@ export default function App() {
     return `Imported ${imported.length} team${imported.length === 1 ? '' : 's'}.`;
   }
 
-  const activeMenuItem = MENU_ITEMS.find((m) => m.id === activePopup);
-  const popupTitle =
-    activePopup === 'serveorder' ? 'Serve Order' : activeMenuItem ? activeMenuItem.label : '';
+  const activeRailItem = RAIL_ITEMS.find((m) => m.id === activePopup);
+  const popupTitle = activeRailItem ? activeRailItem.label : '';
+  const isCenteredModal = CENTERED_MODAL_IDS.includes(activePopup);
+  const isSidePopup = !!activePopup && !isCenteredModal;
 
   const serveStateButtons = (
     <div className="flex items-center gap-1 bg-ink rounded-lg p-1">
@@ -262,13 +259,24 @@ export default function App() {
             if (opt.key === 'base') setEditingFormation(false);
             if (opt.key !== 'receive') setShowSwitch(false);
           }}
-          className={`h-9 px-3 rounded text-sm font-medium transition-colors ${
+          className={`h-11 px-3 rounded text-sm font-medium transition-colors ${
             serveState === opt.key ? 'bg-gold text-ink' : 'text-chalk-dim'
           }`}
         >
           {opt.label}
         </button>
       ))}
+      {serveState === 'receive' && (
+        <select
+          value={showSwitch ? 'switch' : 'legal'}
+          onChange={(e) => setShowSwitch(e.target.value === 'switch')}
+          title="Serve receive positions, or where players switch to once the ball is live"
+          className="h-11 bg-ink border-l border-ink-line rounded-r px-1.5 text-xs text-chalk-dim"
+        >
+          <option value="legal">Serve Receive</option>
+          <option value="switch">Switch</option>
+        </select>
+      )}
     </div>
   );
 
@@ -280,10 +288,14 @@ export default function App() {
     substitutionServers,
     roster: activeRoster.players,
     showZoneLabels,
+    onToggleZoneLabels: () => setShowZoneLabels(!showZoneLabels),
     serveState,
     showSwitch,
     formations,
     editingFormation: editingFormation && serveState !== 'base',
+    onToggleEditingFormation: () => setEditingFormation(!editingFormation),
+    onResetFormation: () => resetFormation(current, formationEditState),
+    canReset: !!formations[formationKey(current, formationEditState)],
     onPlacePlayer: (slotIndex, gridCell) => placeFormationPlayer(current, formationEditState, slotIndex, gridCell),
     onPrevRotation: () => setCurrent(current === 1 ? 6 : current - 1),
     onNextRotation: () => setCurrent(current === 6 ? 1 : current + 1),
@@ -318,7 +330,6 @@ export default function App() {
           </span>
         )}
         <div className="flex-1" />
-        <RightMenu onSelect={handleMenuSelect} />
       </header>
 
       <div className="flex flex-1 min-h-0 popup:items-stretch relative">
@@ -349,32 +360,6 @@ export default function App() {
         <main className="flex-1 min-w-0 overflow-y-auto p-4">
           <section className="max-w-4xl mx-auto">
             <div className="bg-ink-raised/40 border border-ink-line rounded-xl overflow-hidden mb-5">
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
-                <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
-                  Court
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsFullscreen(true)}
-                    title="Full screen"
-                    className="flex items-center justify-center w-11 h-11 rounded-full border bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk transition-colors"
-                  >
-                    <Maximize2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => setShowZoneLabels(!showZoneLabels)}
-                    aria-pressed={showZoneLabels}
-                    className={`flex items-center gap-1.5 h-11 px-3 rounded-full text-sm font-medium border transition-colors ${
-                      showZoneLabels
-                        ? 'bg-gold text-ink border-gold'
-                        : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                    }`}
-                  >
-                    <Tag size={16} />
-                  </button>
-                </div>
-              </div>
-
               <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line flex-wrap">
                 <RotationSelector
                   current={current}
@@ -385,53 +370,18 @@ export default function App() {
                 {serveStateButtons}
               </div>
 
-              {serveState !== 'base' && (
-                <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-b border-ink-line flex-wrap">
-                  {serveState === 'receive' && (
-                    <button
-                      onClick={() => setShowSwitch(!showSwitch)}
-                      aria-pressed={showSwitch}
-                      title="Show playing positions after the switch"
-                      className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
-                        showSwitch
-                          ? 'bg-gold text-ink border-gold'
-                          : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                      }`}
-                    >
-                      Switch
-                    </button>
-                  )}
-                  <button
-                    onClick={() => resetFormation(current, formationEditState)}
-                    disabled={!formations[formationKey(current, formationEditState)]}
-                    title="Reset this formation to its default"
-                    className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-ink-line bg-ink text-chalk-dim hover:border-gold/50 hover:text-chalk transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    <RotateCcw size={14} />
-                    <span className="hidden sm:inline">Reset</span>
-                  </button>
-                  <button
-                    onClick={() => setEditingFormation(!editingFormation)}
-                    aria-pressed={editingFormation}
-                    className={`h-9 px-3 rounded-lg text-xs font-medium border transition-colors ${
-                      editingFormation
-                        ? 'bg-gold text-ink border-gold'
-                        : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                    }`}
-                  >
-                    {editingFormation ? 'Done' : 'Edit'}
-                  </button>
-                </div>
-              )}
-
               <div className="p-4">
-                <CourtDiagram {...courtDiagramProps} isFullscreen={false} />
+                <CourtDiagram
+                  {...courtDiagramProps}
+                  isFullscreen={false}
+                  onToggleFullscreen={() => setIsFullscreen(true)}
+                />
               </div>
             </div>
           </section>
         </main>
 
-        <SlideOutPopup isOpen={!!activePopup} onClose={() => setActivePopup(null)} side="right" title={popupTitle}>
+        <SlideOutPopup isOpen={isSidePopup} onClose={() => setActivePopup(null)} side="right" title={popupTitle}>
           {activePopup === 'roster' && (
             <RosterEditor
               players={activeRoster.players}
@@ -482,6 +432,11 @@ export default function App() {
               onImport={handleImport}
             />
           )}
+        </SlideOutPopup>
+
+        <RightIconRail activePopup={activePopup} onSelect={handleRailSelect} />
+
+        <CenteredModal isOpen={isCenteredModal} onClose={() => setActivePopup(null)} title={popupTitle}>
           {activePopup === 'cheatsheet' && (
             <div className="bg-white rounded-lg p-2 -m-2">
               <button
@@ -518,39 +473,13 @@ export default function App() {
             </div>
           )}
           {activePopup === 'howto' && <HelpContent />}
-        </SlideOutPopup>
+        </CenteredModal>
       </div>
 
       {isFullscreen && (
         <div className="fixed inset-0 z-50 bg-ink overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
-          <div className="bg-ink-raised/40 border border-ink-line overflow-hidden">
-            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line">
-              <span className="font-display text-xs tracking-widest text-chalk-dim uppercase">
-                Court
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsFullscreen(false)}
-                  title="Exit full screen"
-                  className="flex items-center justify-center w-11 h-11 rounded-full border bg-gold text-ink border-gold transition-colors"
-                >
-                  <Minimize2 size={16} />
-                </button>
-                <button
-                  onClick={() => setShowZoneLabels(!showZoneLabels)}
-                  aria-pressed={showZoneLabels}
-                  className={`flex items-center gap-1.5 h-11 px-3 rounded-full text-sm font-medium border transition-colors ${
-                    showZoneLabels
-                      ? 'bg-gold text-ink border-gold'
-                      : 'bg-ink text-chalk-dim border-ink-line hover:border-gold/50 hover:text-chalk'
-                  }`}
-                >
-                  <Tag size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-line flex-wrap">
+          <div className="bg-ink-raised/40 border border-ink-line overflow-hidden p-4 sm:p-8">
+            <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
               <RotationSelector
                 current={current}
                 startRotation={startRotation}
@@ -560,9 +489,11 @@ export default function App() {
               {serveStateButtons}
             </div>
 
-            <div className="p-4 sm:p-8">
-              <CourtDiagram {...courtDiagramProps} isFullscreen />
-            </div>
+            <CourtDiagram
+              {...courtDiagramProps}
+              isFullscreen
+              onToggleFullscreen={() => setIsFullscreen(false)}
+            />
           </div>
         </div>
       )}

@@ -63,7 +63,7 @@ export default function LineupEditor({
             <select
               value={slots[zone - 1] || ''}
               onChange={(e) => setZone(zone, e.target.value)}
-              className="flex-1 min-w-0 bg-ink-raised border border-ink-line rounded px-2 py-2.5 text-chalk truncate"
+              className="flex-1 min-w-0 h-11 bg-ink-raised border border-ink-line rounded px-2 text-chalk truncate"
             >
               <option value="">— empty —</option>
               {lineupOptionsForZone(zone).map((p) => (
