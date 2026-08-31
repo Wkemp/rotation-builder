@@ -4,9 +4,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const REPO_NAME = 'rotation-builder';
+const isPreview = process.env.DEPLOY_TARGET === 'preview';
 
 export default defineConfig({
-  base: `/${REPO_NAME}/`,
+  base: `/${REPO_NAME}/${isPreview ? 'preview/' : ''}`,
   plugins: [
     react(),
     tailwindcss(),

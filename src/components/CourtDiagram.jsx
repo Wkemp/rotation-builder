@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ArrowLeftRight, Maximize2, Minimize2, Tag, RotateCcw } from 'lucide-react';
 import {
   zoneForSlot,
@@ -51,6 +51,63 @@ export default function CourtDiagram({
   const [pickedUpSlot, setPickedUpSlot] = useState(null);
   const [diagramTab, setDiagramTab] = useState('court'); // 'court' | 'notes'
   const courtRef = useRef(null);
+
+  // On/off-court alerts: compares, per STARTER (not per zone, since a
+  // starter's zone changes every rotation by design), whether they're
+  // currently covered by a libero/sub versus last render. Tracking by the
+  // starter's own id (not zone) is what makes this correct across a
+  // rotation change rather than just noticing "zone 3 changed."
+  const [alerts, setAlerts] = useState([]);
+  const prevStatusRef = useRef(null);
+  const statusByStarter = {};
+  for (const zone of [1, 2, 3, 4, 5, 6]) {
+    const cell = court[zone];
+    if (!cell.originalPlayerId) continue;
+    statusByStarter[cell.originalPlayerId] = cell.isLibero ? 'libero' : cell.isSub ? 'sub' : null;
+  }
+  const statusKey = JSON.stringify(statusByStarter);
+
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = statusByStarter;
+    if (!prevStatus) return; // first render - nothing to compare against yet
+
+    const changes = [];
+    for (const starterId of Object.keys(statusByStarter)) {
+      const before = prevStatus[starterId];
+      const after = statusByStarter[starterId];
+      if (before === after) continue;
+      const starterName = playerAt(starterId).name;
+      if (after && !before) {
+        changes.push({
+          id: `${starterId}-in-${Date.now()}`,
+          text: `${after === 'libero' ? 'Libero' : 'Sub'} in for ${starterName}`,
+          tone: 'in',
+        });
+      } else if (!after && before) {
+        changes.push({ id: `${starterId}-out-${Date.now()}`, text: `${starterName} back in`, tone: 'out' });
+      } else {
+        // switched directly from one type to the other (e.g. sub replaced by libero)
+        changes.push({
+          id: `${starterId}-swap-${Date.now()}`,
+          text: `${after === 'libero' ? 'Libero' : 'Sub'} in for ${starterName}`,
+          tone: 'in',
+        });
+      }
+    }
+    if (changes.length === 0) return;
+
+    setAlerts((prev) => [...prev, ...changes]);
+    const timers = changes.map((c) =>
+      setTimeout(() => setAlerts((prev) => prev.filter((a) => a.id !== c.id)), 4000)
+    );
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusKey]);
+
+  function dismissAlert(id) {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+  }
 
   const receiveFormation = formations[formationKey(rotationNum, 'receive')];
   // Switch ("playing position") data always exists independent of whether
@@ -204,6 +261,29 @@ export default function CourtDiagram({
       {(!onUpdateNote || diagramTab === 'court') && (
         <>
           <div className={`relative w-full aspect-[3/2] ${courtBottomMargin}`}>
+            {/* on/off-court alerts: libero or sub coming in or out as rotations
+                change, positioned over the court's own top-right corner, clear
+                of the header controls above and not blocking taps on the court */}
+            {alerts.length > 0 && (
+              <div className="absolute top-2 right-2 z-30 flex flex-col items-end gap-1.5 pointer-events-none">
+                {alerts.map((alert) => (
+                  <button
+                    key={alert.id}
+                    onClick={() => dismissAlert(alert.id)}
+                    className={`pointer-events-auto rounded-lg shadow-lg font-medium text-left transition-opacity ${
+                      isFullscreen ? 'px-4 py-2.5 text-base' : 'px-3 py-2 text-sm'
+                    } ${
+                      alert.tone === 'in'
+                        ? 'bg-court-line text-chalk'
+                        : 'bg-ink-raised text-chalk border border-ink-line'
+                    }`}
+                  >
+                    {alert.text}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* net: antennas at the sidelines, a solid top tape, and a mesh band
                 hanging below it - reads as an actual net, not a dashed line */}
             <div className="absolute -top-4 left-0 right-0 h-4 pointer-events-none">
