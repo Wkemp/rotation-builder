@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, layout-redesign]
   workflow_dispatch:
 
 permissions:
@@ -18,15 +18,54 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main (production)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+
+      - name: Checkout layout-redesign (preview)
+        uses: actions/checkout@v4
+        with:
+          ref: layout-redesign
+          path: preview-src
+        continue-on-error: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm run build
+
+      - name: Build production
+        working-directory: main-src
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build preview
+        if: hashFiles('preview-src/package.json') != ''
+        working-directory: preview-src
+        run: |
+          npm ci
+          npm run build
+        env:
+          DEPLOY_TARGET: preview
+        continue-on-error: true
+
+      - name: Combine into one deployable site
+        run: |
+          mkdir -p combined
+          cp -r main-src/dist/. combined/
+          if [ -d preview-src/dist ]; then
+            mkdir -p combined/preview
+            cp -r preview-src/dist/. combined/preview/
+            echo "Preview included at /preview/"
+          else
+            echo "Preview build unavailable - deploying production only, unaffected"
+          fi
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: combined
 
   deploy:
     needs: build
